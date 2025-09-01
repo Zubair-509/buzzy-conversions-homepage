@@ -157,7 +157,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
         <div className="flex justify-center items-center">
           {/* Text Content - Left Column */}
           <MotionWrapper
-            className="text-center lg:text-left"
+            className="text-center"
             {...(enableMotion && !prefersReducedMotion && {
               initial: "hidden",
               animate: "visible",
@@ -180,7 +180,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
 
               {/* Subheadline with gradient shimmer */}
               <motion.p
-                className="text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 relative"
+                className="text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto relative"
                 {...(enableMotion && !prefersReducedMotion && {
                   initial: { opacity: 0, y: 20 },
                   animate: { opacity: 1, y: 0 },
@@ -209,7 +209,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
 
               {/* CTA Buttons with Glassmorphism */}
               <motion.div
-                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4"
+                className="flex flex-col sm:flex-row gap-4 justify-center pt-4"
                 {...(enableMotion && !prefersReducedMotion && {
                   initial: { opacity: 0, y: 20 },
                   animate: { opacity: 1, y: 0 },
