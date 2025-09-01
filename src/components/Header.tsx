@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
+import Logo from "@/components/Logo";
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -48,12 +49,9 @@ export default function Header() {
           <div className="flex items-center">
             <a
               href="/"
-              className="flex items-center space-x-2 font-display font-bold text-xl text-foreground hover:text-primary transition-all duration-300 no-underline group"
+              className="no-underline"
             >
-              <div className="w-8 h-8 bg-gradient-neon rounded-lg flex items-center justify-center group-hover:animate-glow transition-all duration-300">
-                <span className="text-white text-sm font-bold">B</span>
-              </div>
-              <span className="text-gradient-neon">Buzzy Conversions</span>
+              <Logo size="md" showText={true} />
             </a>
           </div>
 
@@ -105,12 +103,7 @@ export default function Header() {
               >
                 <div className="flex flex-col space-y-6 pt-6">
                   {/* Mobile Logo */}
-                  <div className="flex items-center space-x-2 font-display font-bold text-xl text-foreground">
-                    <div className="w-8 h-8 bg-gradient-neon rounded-lg flex items-center justify-center animate-glow">
-                      <span className="text-white text-sm font-bold">B</span>
-                    </div>
-                    <span className="text-gradient-neon">Buzzy Conversions</span>
-                  </div>
+                  <Logo size="md" showText={true} />
 
                   {/* Mobile Navigation */}
                   <nav className="flex flex-col space-y-4">
