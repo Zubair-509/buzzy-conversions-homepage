@@ -154,7 +154,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
       )}
 
       <div className="container mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="flex justify-center items-center">
           {/* Text Content - Left Column */}
           <MotionWrapper
             className="text-center lg:text-left"
@@ -236,139 +236,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
             </div>
           </MotionWrapper>
 
-          {/* Illustration - Right Column */}
-          <MotionWrapper
-            className="relative flex justify-center lg:justify-end"
-            {...(enableMotion && !prefersReducedMotion && {
-              initial: { opacity: 0, scale: 0.9 },
-              animate: { opacity: 1, scale: 1 },
-              transition: { duration: 0.8, delay: 0.6 }
-            })}
-          >
-            <div className="relative w-full max-w-lg lg:max-w-xl">
-              {/* Glassmorphism Dashboard Container */}
-              <div className="glass neon-glow rounded-2xl p-4 relative animate-float">
-                {/* Dashboard Mockup SVG */}
-                <svg
-                  viewBox="0 0 400 300"
-                  className="w-full h-auto"
-                  role="img"
-                  aria-label="Buzzy Conversions dashboard interface showing conversion analytics and optimization tools"
-                >
-                  {/* Dashboard Background with Glass Effect */}
-                  <defs>
-                    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(15, 15, 25, 0.8)" />
-                      <stop offset="100%" stopColor="rgba(15, 15, 25, 0.6)" />
-                    </linearGradient>
-                    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#ff1cf7" />
-                      <stop offset="50%" stopColor="#8b5cf6" />
-                      <stop offset="100%" stopColor="#06b6d4" />
-                    </linearGradient>
-                  </defs>
-
-                  <rect width="400" height="300" rx="16" fill="url(#glassGradient)" stroke="rgba(139, 92, 246, 0.3)" strokeWidth="1"/>
-                  
-                  {/* Header with Neon Accent */}
-                  <rect x="0" y="0" width="400" height="60" rx="16" fill="rgba(30, 30, 45, 0.8)"/>
-                  <circle cx="30" cy="30" r="6" fill="#ff1cf7" className="animate-pulse"/>
-                  <circle cx="50" cy="30" r="6" fill="#8b5cf6" className="animate-pulse"/>
-                  <circle cx="70" cy="30" r="6" fill="#06b6d4" className="animate-pulse"/>
-                  
-                  {/* Navigation with Glass Effect */}
-                  <rect x="120" y="18" width="60" height="24" rx="4" fill="url(#neonGradient)" opacity="0.8"/>
-                  <rect x="190" y="20" width="40" height="20" rx="4" fill="rgba(139, 92, 246, 0.2)" stroke="rgba(139, 92, 246, 0.4)" strokeWidth="1"/>
-                  <rect x="240" y="20" width="50" height="20" rx="4" fill="rgba(139, 92, 246, 0.2)" stroke="rgba(139, 92, 246, 0.4)" strokeWidth="1"/>
-                  
-                  {/* Main Content Area with Glass */}
-                  <rect x="20" y="80" width="360" height="200" rx="8" fill="rgba(15, 15, 25, 0.4)" stroke="rgba(139, 92, 246, 0.2)" strokeWidth="1"/>
-                  
-                  {/* Chart Area */}
-                  <rect x="40" y="100" width="320" height="120" rx="4" fill="rgba(10, 10, 15, 0.6)"/>
-                  
-                  {/* Animated Neon Chart Line */}
-                  {enableMotion && !prefersReducedMotion ? (
-                    <motion.path
-                      d="M 60 180 Q 120 160 180 140 T 340 120"
-                      stroke="url(#neonGradient)"
-                      strokeWidth="3"
-                      fill="none"
-                      strokeLinecap="round"
-                      filter="drop-shadow(0 0 8px rgba(139, 92, 246, 0.6))"
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      transition={{ duration: 2, delay: 1.5, ease: "easeInOut" }}
-                    />
-                  ) : (
-                    <path
-                      d="M 60 180 Q 120 160 180 140 T 340 120"
-                      stroke="url(#neonGradient)"
-                      strokeWidth="3"
-                      fill="none"
-                      strokeLinecap="round"
-                      filter="drop-shadow(0 0 8px rgba(139, 92, 246, 0.6))"
-                    />
-                  )}
-                  
-                  {/* Data Points with Neon Glow */}
-                  <circle cx="60" cy="180" r="4" fill="#ff1cf7" filter="drop-shadow(0 0 4px #ff1cf7)"/>
-                  <circle cx="120" cy="160" r="4" fill="#8b5cf6" filter="drop-shadow(0 0 4px #8b5cf6)"/>
-                  <circle cx="180" cy="140" r="4" fill="#06b6d4" filter="drop-shadow(0 0 4px #06b6d4)"/>
-                  <circle cx="240" cy="130" r="4" fill="#14b8a6" filter="drop-shadow(0 0 4px #14b8a6)"/>
-                  <circle cx="340" cy="120" r="4" fill="#ff1cf7" filter="drop-shadow(0 0 4px #ff1cf7)"/>
-                  
-                  {/* Glass Stats Cards */}
-                  <rect x="40" y="240" width="90" height="30" rx="4" fill="rgba(255, 28, 247, 0.1)" stroke="rgba(255, 28, 247, 0.3)" strokeWidth="1"/>
-                  <rect x="140" y="240" width="90" height="30" rx="4" fill="rgba(139, 92, 246, 0.1)" stroke="rgba(139, 92, 246, 0.3)" strokeWidth="1"/>
-                  <rect x="240" y="240" width="90" height="30" rx="4" fill="rgba(6, 182, 212, 0.1)" stroke="rgba(6, 182, 212, 0.3)" strokeWidth="1"/>
-                  
-                  {/* Card Labels with Neon Text */}
-                  <text x="85" y="258" textAnchor="middle" fontSize="10" fill="#ff1cf7" fontFamily="var(--font-display)" filter="drop-shadow(0 0 2px #ff1cf7)">+24% CVR</text>
-                  <text x="185" y="258" textAnchor="middle" fontSize="10" fill="#8b5cf6" fontFamily="var(--font-display)" filter="drop-shadow(0 0 2px #8b5cf6)">↑ Revenue</text>
-                  <text x="285" y="258" textAnchor="middle" fontSize="10" fill="#06b6d4" fontFamily="var(--font-display)" filter="drop-shadow(0 0 2px #06b6d4)">↓ Bounce</text>
-                </svg>
-              </div>
-
-              {/* Floating Neon Elements */}
-              {enableMotion && !prefersReducedMotion && (
-                <>
-                  <motion.div
-                    className="absolute -top-4 -right-4 w-16 h-16 glass neon-glow rounded-full flex items-center justify-center animate-float"
-                    animate={{
-                      y: [0, -10, 0],
-                      rotate: [0, 5, 0]
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                    aria-hidden="true"
-                  >
-                    <span className="text-sm font-bold text-gradient-neon">+24%</span>
-                  </motion.div>
-                  
-                  <motion.div
-                    className="absolute -bottom-6 -left-6 w-12 h-12 glass neon-glow rounded-full flex items-center justify-center animate-float"
-                    animate={{
-                      y: [0, 8, 0],
-                      rotate: [0, -5, 0]
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 1
-                    }}
-                    aria-hidden="true"
-                  >
-                    <Play className="w-4 h-4 text-primary neon-glow" />
-                  </motion.div>
-                </>
-              )}
-            </div>
-          </MotionWrapper>
+          
         </div>
       </div>
     </section>
