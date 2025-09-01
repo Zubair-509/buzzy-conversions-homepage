@@ -45,7 +45,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
     if (typeof window !== "undefined") {
       const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
       setReducedMotion(mediaQuery.matches);
-      
+
       const handleChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
@@ -131,7 +131,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
             Convert your files in three simple steps. Fast, secure, and reliable file conversion made easy.
           </p>
-          
+
           {/* Demo Controls */}
           <Button
             onClick={handleDemoToggle}
@@ -175,7 +175,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                 const StepIcon = step.icon;
                 const isActive = activeStep >= index;
                 const isVisible = visibleSteps.has(index) || reducedMotion;
-                
+
                 return (
                   <div
                     key={step.id}
@@ -213,7 +213,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                         }`}
                       >
                         <StepIcon 
-                          className={`w-6 h-6 transition-all duration-300 ${
+                          className={`w-8 h-8 transition-all duration-300 ${
                             isActive && !reducedMotion ? 'animate-pulse drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : ''
                           } ${
                             activeStep === index && !reducedMotion ? 'animate-bounce' : ''
@@ -254,7 +254,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
               const StepIcon = step.icon;
               const isActive = activeStep >= index;
               const isVisible = visibleSteps.has(index) || reducedMotion;
-              
+
               return (
                 <div key={step.id} className="relative">
                   {/* Vertical Glowing Connector */}
@@ -297,13 +297,13 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                         }`}
                       >
                         <StepIcon 
-                          className={`w-6 h-6 transition-all duration-300 ${
+                          className={`w-8 h-8 transition-all duration-300 ${
                             isActive && !reducedMotion ? 'animate-pulse drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : ''
                           } ${
                             activeStep === index && !reducedMotion ? 'animate-bounce' : ''
                           }`} 
                         />
-                        
+
                         {/* Step Number */}
                         <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-all duration-300 ${
                           isActive 
