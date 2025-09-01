@@ -170,10 +170,10 @@ export default function Footer() {
       <Button
         onClick={scrollToTop}
         size="sm"
-        className="fixed bottom-6 right-6 w-12 h-12 rounded-full glass glass-hover neon-glow-hover bg-gradient-neon text-white border-0 hover:scale-110 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 z-50 animate-float ripple"
+        className="fixed bottom-8 right-8 w-14 h-14 rounded-full glass glass-hover neon-glow-hover bg-gradient-neon text-white border-0 hover:scale-110 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 z-50 animate-float ripple shadow-lg"
         aria-label="Scroll to top of page"
       >
-        <ArrowRight className="w-4 h-4 rotate-[-90deg] drop-shadow-sm" />
+        <ArrowRight className="w-5 h-5 rotate-[-90deg] drop-shadow-sm" />
       </Button>
     </>
   );
