@@ -155,21 +155,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
         >
           {/* Desktop Layout */}
           <div className="hidden lg:block">
-            <div className="relative grid grid-cols-3 gap-12 max-w-6xl mx-auto">
-              {/* Glowing Connector Lines */}
-              <div className="absolute top-1/2 left-1/4 right-1/4 h-1 -translate-y-1/2 z-0">
-                <div className="h-full bg-primary/20 rounded-full" />
-                <div 
-                  className={`h-full bg-gradient-neon rounded-full transition-all duration-1000 ease-in-out neon-glow ${
-                    reducedMotion ? '' : 'animate-glow'
-                  }`}
-                  style={{
-                    width: `${((activeStep + 1) / steps.length) * 100}%`,
-                    animation: reducedMotion ? 'none' : undefined
-                  }}
-                />
-              </div>
-
+            <div className="grid grid-cols-3 gap-12 max-w-6xl mx-auto mb-8">
               {/* Steps */}
               {steps.map((step, index) => {
                 const StepIcon = step.icon;
@@ -241,6 +227,22 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Glowing Connector Line positioned below cards */}
+            <div className="relative max-w-6xl mx-auto mb-8">
+              <div className="mx-auto w-3/4 h-1">
+                <div className="h-full bg-primary/20 rounded-full" />
+                <div 
+                  className={`h-full bg-gradient-neon rounded-full transition-all duration-1000 ease-in-out neon-glow ${
+                    reducedMotion ? '' : 'animate-glow'
+                  }`}
+                  style={{
+                    width: `${((activeStep + 1) / steps.length) * 100}%`,
+                    animation: reducedMotion ? 'none' : undefined
+                  }}
+                />
+              </div>
             </div>
           </div>
 
