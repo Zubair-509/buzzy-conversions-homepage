@@ -195,7 +195,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                     aria-label={`Step ${index + 1}: ${step.title}`}
                   >
                     {/* Glass Step Card */}
-                    <div className={`glass glass-hover rounded-2xl p-6 mb-4 transition-all duration-300 border animate-border-glow w-80 ${
+                    <div className={`glass glass-hover rounded-2xl p-8 mb-4 transition-all duration-300 border animate-border-glow max-w-sm w-full ${
                       isActive 
                         ? 'border-primary/60 neon-glow bg-gradient-neon/10' 
                         : 'border-primary/20 hover:border-primary/40'
