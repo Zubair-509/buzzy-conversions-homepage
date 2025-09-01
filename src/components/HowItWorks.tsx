@@ -155,9 +155,9 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
         >
           {/* Desktop Layout */}
           <div className="hidden lg:block">
-            <div className="relative grid grid-cols-3 gap-24 max-w-7xl mx-auto">
+            <div className="relative grid grid-cols-3 gap-12 max-w-6xl mx-auto">
               {/* Glowing Connector Lines */}
-              <div className="absolute top-16 left-1/3 right-1/3 h-1 z-0"></div>
+              <div className="absolute top-1/2 left-1/4 right-1/4 h-1 -translate-y-1/2 z-0">
                 <div className="h-full bg-primary/20 rounded-full" />
                 <div 
                   className={`h-full bg-gradient-neon rounded-full transition-all duration-1000 ease-in-out neon-glow ${
@@ -195,7 +195,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                     aria-label={`Step ${index + 1}: ${step.title}`}
                   >
                     {/* Glass Step Card */}
-                    <div className={`glass glass-hover rounded-2xl p-8 mb-8 transition-all duration-300 border animate-border-glow max-w-xs w-full mx-auto ${
+                    <div className={`glass glass-hover rounded-2xl p-8 mb-4 transition-all duration-300 border animate-border-glow max-w-sm w-full ${
                       isActive 
                         ? 'border-primary/60 neon-glow bg-gradient-neon/10' 
                         : 'border-primary/20 hover:border-primary/40'
