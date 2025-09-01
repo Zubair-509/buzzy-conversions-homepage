@@ -37,10 +37,10 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
         isScrolled
-          ? "glass border-b animate-border-glow shadow-lg shadow-primary/10"
-          : "glass"
+          ? "bg-background/20 backdrop-blur-xl border-b border-white/10 shadow-lg shadow-primary/5"
+          : "bg-background/10 backdrop-blur-lg"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -99,7 +99,7 @@ export default function Header() {
               </SheetTrigger>
               <SheetContent
                 side="right"
-                className="w-[300px] sm:w-[400px] glass border-l animate-border-glow"
+                className="w-[300px] sm:w-[400px] bg-background/30 backdrop-blur-xl border-l border-white/10"
               >
                 <div className="flex flex-col space-y-6 pt-6">
                   {/* Mobile Logo */}
@@ -120,7 +120,7 @@ export default function Header() {
                   </nav>
 
                   {/* Mobile Auth Actions */}
-                  <div className="flex flex-col space-y-3 pt-6 border-t animate-border-glow">
+                  <div className="flex flex-col space-y-3 pt-6 border-t border-white/10">
                     <a
                       href="/sign-in"
                       onClick={closeMobileMenu}
