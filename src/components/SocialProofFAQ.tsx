@@ -117,7 +117,7 @@ const StarRating = ({ rating, animated = false }: { rating: number; animated?: b
 
   useEffect(() => {
     if (!animated) return;
-
+    
     const timer = setTimeout(() => {
       if (visibleStars < rating) {
         setVisibleStars(prev => prev + 1);
@@ -275,7 +275,7 @@ export default function SocialProofFAQ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-6 px-4 pb-2 leading-tight text-foreground">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-gradient-neon mb-4 animate-neon-pulse">
             Trusted by <mark className="bg-gradient-neon text-white px-3 py-1 rounded-full neon-glow animate-pulse">10,000+</mark> businesses worldwide
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
