@@ -155,9 +155,9 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
         >
           {/* Desktop Layout */}
           <div className="hidden lg:block">
-            <div className="relative flex items-center justify-between max-w-4xl mx-auto">
+            <div className="relative grid grid-cols-3 gap-12 max-w-6xl mx-auto">
               {/* Glowing Connector Lines */}
-              <div className="absolute top-1/2 left-16 right-16 h-1 -translate-y-1/2 z-0">
+              <div className="absolute top-1/2 left-1/4 right-1/4 h-1 -translate-y-1/2 z-0">
                 <div className="h-full bg-primary/20 rounded-full" />
                 <div 
                   className={`h-full bg-gradient-neon rounded-full transition-all duration-1000 ease-in-out neon-glow ${
@@ -182,10 +182,6 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                     data-step={index}
                     className={`relative z-10 flex flex-col items-center cursor-pointer group transition-all duration-700 ${
                       isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                    } ${
-                      step.position === 'left' && !reducedMotion ? 'lg:translate-x-4' : ''
-                    } ${
-                      step.position === 'right' && !reducedMotion ? 'lg:-translate-x-4' : ''
                     }`}
                     onClick={() => handleStepClick(index)}
                     role="button"
@@ -199,7 +195,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                     aria-label={`Step ${index + 1}: ${step.title}`}
                   >
                     {/* Glass Step Card */}
-                    <div className={`glass glass-hover rounded-2xl p-6 mb-4 transition-all duration-300 border animate-border-glow ${
+                    <div className={`glass glass-hover rounded-2xl p-8 mb-4 transition-all duration-300 border animate-border-glow max-w-sm w-full ${
                       isActive 
                         ? 'border-primary/60 neon-glow bg-gradient-neon/10' 
                         : 'border-primary/20 hover:border-primary/40'
@@ -222,8 +218,8 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                       </div>
 
                       {/* Step Content */}
-                      <div className="text-center max-w-sm">
-                        <h3 className={`text-lg font-display font-semibold mb-3 transition-colors duration-300 ${
+                      <div className="text-center">
+                        <h3 className={`text-xl font-display font-semibold mb-4 transition-colors duration-300 ${
                           isActive ? 'text-gradient-neon' : 'text-foreground group-hover:text-primary'
                         }`}>
                           {step.title}
