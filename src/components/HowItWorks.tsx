@@ -157,7 +157,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
           <div className="hidden lg:block">
             <div className="relative flex items-center justify-between max-w-4xl mx-auto">
               {/* Glowing Connector Lines */}
-              <div className="absolute top-1/2 left-0 right-0 h-1 -translate-y-1/2 z-0">
+              <div className="absolute top-1/2 left-16 right-16 h-1 -translate-y-1/2 z-0">
                 <div className="h-full bg-primary/20 rounded-full" />
                 <div 
                   className={`h-full bg-gradient-neon rounded-full transition-all duration-1000 ease-in-out neon-glow ${
@@ -199,7 +199,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                     aria-label={`Step ${index + 1}: ${step.title}`}
                   >
                     {/* Glass Step Card */}
-                    <div className={`glass glass-hover rounded-2xl p-8 mb-4 transition-all duration-300 border animate-border-glow ${
+                    <div className={`glass glass-hover rounded-2xl p-6 mb-4 transition-all duration-300 border animate-border-glow ${
                       isActive 
                         ? 'border-primary/60 neon-glow bg-gradient-neon/10' 
                         : 'border-primary/20 hover:border-primary/40'
@@ -222,8 +222,8 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                       </div>
 
                       {/* Step Content */}
-                      <div className="text-center max-w-xs">
-                        <h3 className={`text-lg font-display font-semibold mb-2 transition-colors duration-300 ${
+                      <div className="text-center max-w-sm">
+                        <h3 className={`text-lg font-display font-semibold mb-3 transition-colors duration-300 ${
                           isActive ? 'text-gradient-neon' : 'text-foreground group-hover:text-primary'
                         }`}>
                           {step.title}
@@ -259,7 +259,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
                 <div key={step.id} className="relative">
                   {/* Vertical Glowing Connector */}
                   {index < steps.length - 1 && (
-                    <div className="absolute left-8 top-20 w-1 h-16">
+                    <div className="absolute left-8 top-24 w-1 h-12">
                       <div className="w-full h-full bg-primary/20 rounded-full" />
                       <div 
                         className={`w-full bg-gradient-neon rounded-full transition-all duration-500 neon-glow ${
@@ -271,7 +271,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
 
                   <div
                     data-step={index}
-                    className={`glass glass-hover rounded-2xl p-6 border animate-border-glow cursor-pointer group transition-all duration-700 ${
+                    className={`glass glass-hover rounded-2xl p-5 border animate-border-glow cursor-pointer group transition-all duration-700 ${
                       isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
                     } ${
                       isActive ? 'border-primary/60 neon-glow bg-gradient-neon/10' : 'border-primary/20 hover:border-primary/40'
