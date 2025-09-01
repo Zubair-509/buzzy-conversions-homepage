@@ -276,7 +276,7 @@ export default function SocialProofFAQ({
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-gradient-neon mb-4 animate-neon-pulse">
-            Trusted by <mark className="bg-gradient-neon text-white px-3 py-1 rounded-full neon-glow animate-pulse">10,000+</mark> businesses worldwide
+            Trusted by 10,000+ businesses worldwide
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             See what our customers say about their conversion results and get answers to common questions.
