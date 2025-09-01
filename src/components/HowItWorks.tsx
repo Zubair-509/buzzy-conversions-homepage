@@ -79,7 +79,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
     if (isPlaying) {
       intervalRef.current = setInterval(() => {
         setActiveStep(prev => (prev + 1) % steps.length);
-      }, 2000);
+      }, 1500);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);

@@ -20,7 +20,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
   const headlineRef = useRef<HTMLHeadingElement>(null);
 
   const fullText = "Convert More Visitors Into Customers";
-  const typingSpeed = 80;
+  const typingSpeed = 50;
 
   // Check for reduced motion preference
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
       setShowCursor(prev => !prev);
     };
 
-    cursorRef.current = setInterval(blink, 500);
+    cursorRef.current = setInterval(blink, 400);
     return () => {
       if (cursorRef.current) clearInterval(cursorRef.current);
     };
@@ -108,7 +108,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
               scale: [1, 1.1, 1],
             }}
             transition={{
-              duration: 8,
+              duration: 6,
               repeat: Infinity,
               ease: "easeInOut"
             }}
@@ -125,10 +125,10 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
               scale: [1, 0.9, 1],
             }}
             transition={{
-              duration: 10,
+              duration: 7,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 2
+              delay: 1
             }}
             aria-hidden="true"
           />
@@ -143,10 +143,10 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
               scale: [1, 1.2, 1],
             }}
             transition={{
-              duration: 12,
+              duration: 8,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 4
+              delay: 2
             }}
             aria-hidden="true"
           />
@@ -162,7 +162,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
               initial: "hidden",
               animate: "visible",
               variants: animationVariants,
-              transition: { duration: 0.8, delay: 0.2 }
+              transition: { duration: 0.5, delay: 0.1 }
             })}
           >
             <div className="space-y-6">
@@ -184,7 +184,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
                 {...(enableMotion && !prefersReducedMotion && {
                   initial: { opacity: 0, y: 20 },
                   animate: { opacity: 1, y: 0 },
-                  transition: { duration: 0.8, delay: 1.5 }
+                  transition: { duration: 0.5, delay: 0.8 }
                 })}
               >
                 <span className="relative">
@@ -196,9 +196,9 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
                         x: ["-200%", "200%"],
                       }}
                       transition={{
-                        duration: 3,
+                        duration: 2,
                         repeat: Infinity,
-                        delay: 2,
+                        delay: 1,
                         ease: "easeInOut"
                       }}
                       aria-hidden="true"
@@ -213,7 +213,7 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
                 {...(enableMotion && !prefersReducedMotion && {
                   initial: { opacity: 0, y: 20 },
                   animate: { opacity: 1, y: 0 },
-                  transition: { duration: 0.8, delay: 2 }
+                  transition: { duration: 0.5, delay: 1.2 }
                 })}
               >
                 <Button

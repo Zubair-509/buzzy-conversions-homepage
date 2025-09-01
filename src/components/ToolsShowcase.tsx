@@ -274,7 +274,7 @@ export default function ToolsShowcase() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.4 }}
             className="text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-6 px-4 pb-2 leading-tight text-gradient-neon animate-neon-pulse"
           >
             Powerful Tools for Every Need
@@ -283,7 +283,7 @@ export default function ToolsShowcase() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
             className="text-muted-foreground text-lg max-w-2xl mx-auto"
           >
             Professional-grade PDF and image processing tools designed to streamline your workflow
