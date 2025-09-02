@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -27,13 +28,22 @@ interface ToolCardProps {
   icon: React.ReactNode;
   title: string;
   description: string;
+  href?: string;
   fromFormat?: string;
   toFormat?: string;
 }
 
-const ToolCard: React.FC<ToolCardProps> = ({ icon, title, description, fromFormat, toFormat }) => {
+const ToolCard: React.FC<ToolCardProps> = ({ icon, title, description, href, fromFormat, toFormat }) => {
+  const router = useRouter();
+  
+  const handleClick = () => {
+    if (href) {
+      router.push(href);
+    }
+  };
+  
   return (
-    <Card className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-border/50 hover:border-primary/20">
+    <Card className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-border/50 hover:border-primary/20" onClick={handleClick}>
       <CardHeader className="pb-4">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
           {icon}
@@ -102,22 +112,26 @@ export default function PDFToolsPage() {
     {
       icon: <FileText className="w-6 h-6 text-primary" />,
       title: "PDF to Word",
-      description: "Convert PDF documents to editable Word files with precision"
+      description: "Convert PDF documents to editable Word files with precision",
+      href: "/tools/pdf-to-word"
     },
     {
       icon: <Presentation className="w-6 h-6 text-primary" />,
       title: "PDF to PowerPoint",
-      description: "Transform PDFs into editable PowerPoint presentations"
+      description: "Transform PDFs into editable PowerPoint presentations",
+      href: "/tools/pdf-to-powerpoint"
     },
     {
       icon: <FileSpreadsheet className="w-6 h-6 text-primary" />,
       title: "PDF to Excel",
-      description: "Extract tables and data from PDFs to Excel spreadsheets"
+      description: "Extract tables and data from PDFs to Excel spreadsheets",
+      href: "/tools/pdf-to-excel"
     },
     {
       icon: <FileImage className="w-6 h-6 text-primary" />,
       title: "PDF to JPG",
-      description: "Convert PDF pages to high-quality JPG images"
+      description: "Convert PDF pages to high-quality JPG images",
+      href: "/tools/pdf-to-jpg"
     }
   ];
 
@@ -125,27 +139,32 @@ export default function PDFToolsPage() {
     {
       icon: <FileText className="w-6 h-6 text-primary" />,
       title: "Word to PDF",
-      description: "Convert Word documents to professional PDF files"
+      description: "Convert Word documents to professional PDF files",
+      href: "/tools/word-to-pdf"
     },
     {
       icon: <Presentation className="w-6 h-6 text-primary" />,
       title: "PowerPoint to PDF",
-      description: "Transform presentations into PDF format"
+      description: "Transform presentations into PDF format",
+      href: "/tools/powerpoint-to-pdf"
     },
     {
       icon: <FileSpreadsheet className="w-6 h-6 text-primary" />,
       title: "Excel to PDF",
-      description: "Convert spreadsheets to PDF with formatting intact"
+      description: "Convert spreadsheets to PDF with formatting intact",
+      href: "/tools/excel-to-pdf"
     },
     {
       icon: <Code className="w-6 h-6 text-primary" />,
       title: "HTML to PDF",
-      description: "Generate PDF files from HTML web pages"
+      description: "Generate PDF files from HTML web pages",
+      href: "/tools/html-to-pdf"
     },
     {
       icon: <FileImage className="w-6 h-6 text-primary" />,
       title: "JPG to PDF",
-      description: "Create PDF documents from image files"
+      description: "Create PDF documents from image files",
+      href: "/tools/jpg-to-pdf"
     }
   ];
 
@@ -153,17 +172,20 @@ export default function PDFToolsPage() {
     {
       icon: <Merge className="w-6 h-6 text-primary" />,
       title: "PDF Merge",
-      description: "Combine multiple PDF files into a single document"
+      description: "Combine multiple PDF files into a single document",
+      href: "/tools/pdf-merge"
     },
     {
       icon: <Split className="w-6 h-6 text-primary" />,
       title: "PDF Split",
-      description: "Extract specific pages or split PDFs into separate files"
+      description: "Extract specific pages or split PDFs into separate files",
+      href: "/tools/pdf-split"
     },
     {
       icon: <Minimize className="w-6 h-6 text-primary" />,
       title: "PDF Compress",
-      description: "Reduce PDF file size while maintaining quality"
+      description: "Reduce PDF file size while maintaining quality",
+      href: "/tools/pdf-compress"
     }
   ];
 
