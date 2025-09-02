@@ -69,6 +69,7 @@ def extract_docx_content(input_path: str) -> Dict[str, Any]:
     Extract content from DOCX file for fallback conversion.
     """
     try:
+        print(f"Extracting content from: {input_path}")
         doc = Document(input_path)
         content = {
             'paragraphs': [],
@@ -78,27 +79,30 @@ def extract_docx_content(input_path: str) -> Dict[str, Any]:
         
         # Extract paragraphs with formatting
         for para in doc.paragraphs:
-            if para.text.strip():  # Skip empty paragraphs
-                para_info = {
-                    'text': para.text,
-                    'alignment': para.alignment,
-                    'runs': []
+            # Include all paragraphs, even if they appear empty (might have formatting)
+            para_text = para.text if para.text else ""
+            
+            para_info = {
+                'text': para_text,
+                'alignment': para.alignment,
+                'runs': []
+            }
+            
+            # Extract run-level formatting
+            for run in para.runs:
+                run_text = run.text if run.text else ""
+                run_info = {
+                    'text': run_text,
+                    'bold': run.bold if run.bold is not None else False,
+                    'italic': run.italic if run.italic is not None else False,
+                    'underline': run.underline if run.underline is not None else False,
+                    'font_name': run.font.name if run.font.name else 'Arial',
+                    'font_size': run.font.size.pt if run.font.size else 12
                 }
-                
-                # Extract run-level formatting
-                for run in para.runs:
-                    if run.text.strip():
-                        run_info = {
-                            'text': run.text,
-                            'bold': run.bold if run.bold is not None else False,
-                            'italic': run.italic if run.italic is not None else False,
-                            'underline': run.underline if run.underline is not None else False,
-                            'font_name': run.font.name if run.font.name else 'Arial',
-                            'font_size': run.font.size.pt if run.font.size else 12
-                        }
-                        para_info['runs'].append(run_info)
-                
-                content['paragraphs'].append(para_info)
+                para_info['runs'].append(run_info)
+            
+            # Add paragraph even if it seems empty (might contain formatting or be intentional)
+            content['paragraphs'].append(para_info)
         
         # Extract tables
         for table in doc.tables:
@@ -106,16 +110,42 @@ def extract_docx_content(input_path: str) -> Dict[str, Any]:
             for row in table.rows:
                 row_data = []
                 for cell in row.cells:
-                    row_data.append(cell.text.strip())
+                    cell_text = cell.text.strip() if cell.text else ""
+                    row_data.append(cell_text)
                 table_data.append(row_data)
             
-            if table_data:  # Only add non-empty tables
-                content['tables'].append(table_data)
+            # Add table even if it appears empty
+            content['tables'].append(table_data)
+        
+        # Debug: Print what we extracted
+        print(f"Extracted {len(content['paragraphs'])} paragraphs and {len(content['tables'])} tables")
+        
+        # Check if we have any actual text content
+        has_text = False
+        for para in content['paragraphs']:
+            if para['text'].strip():
+                has_text = True
+                break
+        
+        if not has_text:
+            for table in content['tables']:
+                for row in table:
+                    for cell in row:
+                        if cell.strip():
+                            has_text = True
+                            break
+                    if has_text:
+                        break
+                if has_text:
+                    break
+        
+        print(f"Document has text content: {has_text}")
         
         return content
         
     except Exception as e:
         print(f"Error extracting DOCX content: {e}")
+        traceback.print_exc()
         return {'paragraphs': [], 'tables': [], 'images': []}
 
 def convert_with_fallback(input_path: str, output_path: str) -> bool:
@@ -133,9 +163,29 @@ def convert_with_fallback(input_path: str, output_path: str) -> bool:
         # Extract content from DOCX
         content = extract_docx_content(input_path)
         
-        if not content['paragraphs'] and not content['tables']:
-            print("✗ No content found in DOCX file")
-            return False
+        # Check if we have any meaningful content
+        has_content = False
+        text_content = []
+        
+        # Collect all text content
+        for para_info in content['paragraphs']:
+            text = para_info['text'].strip()
+            if text:
+                has_content = True
+                text_content.append(text)
+        
+        # Check tables for content
+        for table_data in content['tables']:
+            for row in table_data:
+                for cell in row:
+                    if cell.strip():
+                        has_content = True
+                        break
+        
+        # If no meaningful content found, create a simple document with a message
+        if not has_content:
+            print("⚠ No text content found, creating document with placeholder")
+            text_content = ["This document appears to be empty or contains only formatting."]
         
         # Ensure output directory exists
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -163,38 +213,64 @@ def convert_with_fallback(input_path: str, output_path: str) -> bool:
         )
         
         # Add paragraphs
-        for para_info in content['paragraphs']:
-            text = para_info['text']
-            
-            # Apply basic formatting based on content
-            if len(text) < 100 and (text.isupper() or text.endswith(':')):
-                # Likely a heading
-                para = Paragraph(text, title_style)
-            else:
-                # Regular paragraph
-                para = Paragraph(text, normal_style)
-            
-            story.append(para)
-            story.append(Spacer(1, 6))
+        if text_content:
+            for text in text_content:
+                # Escape HTML special characters for ReportLab
+                text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                
+                # Apply basic formatting based on content
+                if len(text) < 100 and (text.isupper() or text.endswith(':')):
+                    # Likely a heading
+                    para = Paragraph(text, title_style)
+                else:
+                    # Regular paragraph
+                    para = Paragraph(text, normal_style)
+                
+                story.append(para)
+                story.append(Spacer(1, 6))
+        else:
+            # Add content from paragraphs directly
+            for para_info in content['paragraphs']:
+                text = para_info['text']
+                if text.strip():
+                    # Escape HTML special characters
+                    text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    para = Paragraph(text, normal_style)
+                    story.append(para)
+                    story.append(Spacer(1, 6))
         
         # Add tables
         for table_data in content['tables']:
-            if table_data:
-                # Create table
-                table = Table(table_data)
-                table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 12),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
-                ]))
-                
-                story.append(table)
-                story.append(Spacer(1, 12))
+            if table_data and any(any(cell.strip() for cell in row) for row in table_data):
+                try:
+                    # Create table with non-empty content
+                    table = Table(table_data)
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 12),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                    ]))
+                    
+                    story.append(table)
+                    story.append(Spacer(1, 12))
+                except Exception as table_error:
+                    print(f"Error adding table: {table_error}")
+                    # Add table content as paragraphs instead
+                    for row in table_data:
+                        row_text = " | ".join(cell.strip() for cell in row if cell.strip())
+                        if row_text:
+                            para = Paragraph(row_text, normal_style)
+                            story.append(para)
+        
+        # If no content was added, add a default message
+        if not story:
+            para = Paragraph("Document converted successfully but appears to contain no text content.", normal_style)
+            story.append(para)
         
         # Build PDF
         doc.build(story)
@@ -210,6 +286,102 @@ def convert_with_fallback(input_path: str, output_path: str) -> bool:
     except Exception as e:
         print(f"✗ Fallback conversion failed: {str(e)}")
         traceback.print_exc()
+        return False
+
+def simple_text_extraction_fallback(input_path: str, output_path: str) -> bool:
+    """
+    Last resort: extract all text and create a simple PDF
+    """
+    try:
+        print(f"Trying simple text extraction fallback for: {os.path.basename(input_path)}")
+        
+        doc = Document(input_path)
+        all_text = []
+        
+        # Extract all text from paragraphs
+        for para in doc.paragraphs:
+            if para.text:
+                all_text.append(para.text)
+        
+        # Extract text from tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = []
+                for cell in row.cells:
+                    if cell.text:
+                        row_text.append(cell.text)
+                if row_text:
+                    all_text.append(" | ".join(row_text))
+        
+        # If we still have no text, try to extract from runs
+        if not all_text:
+            for para in doc.paragraphs:
+                for run in para.runs:
+                    if run.text:
+                        all_text.append(run.text)
+        
+        if not all_text:
+            all_text = ["This document appears to be empty or contains only images/formatting."]
+        
+        # Create simple PDF with extracted text
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+        
+        c = canvas.Canvas(output_path, pagesize=letter)
+        width, height = letter
+        
+        y_position = height - 50
+        line_height = 14
+        margin = 50
+        
+        c.setFont("Helvetica", 12)
+        
+        for text in all_text:
+            if text.strip():
+                # Split long lines
+                words = text.split()
+                line = ""
+                
+                for word in words:
+                    test_line = line + " " + word if line else word
+                    if c.stringWidth(test_line, "Helvetica", 12) < (width - 2 * margin):
+                        line = test_line
+                    else:
+                        if line:
+                            c.drawString(margin, y_position, line)
+                            y_position -= line_height
+                            line = word
+                        else:
+                            # Word is too long, break it
+                            c.drawString(margin, y_position, word)
+                            y_position -= line_height
+                    
+                    if y_position < margin:
+                        c.showPage()
+                        y_position = height - 50
+                        c.setFont("Helvetica", 12)
+                
+                if line:
+                    c.drawString(margin, y_position, line)
+                    y_position -= line_height
+                    
+                y_position -= 5  # Extra space between paragraphs
+                
+                if y_position < margin:
+                    c.showPage()
+                    y_position = height - 50
+                    c.setFont("Helvetica", 12)
+        
+        c.save()
+        
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            print("✓ Simple text extraction successful")
+            return True
+        else:
+            return False
+            
+    except Exception as e:
+        print(f"Simple text extraction failed: {e}")
         return False
 
 def convert_single_file(input_path: str, output_dir: str = None) -> Dict[str, Any]:
@@ -255,10 +427,16 @@ def convert_single_file(input_path: str, output_dir: str = None) -> Dict[str, An
             if success:
                 method_used = "python-docx + reportlab (fallback)"
         
+        # Try simple text extraction as last resort
+        if not success and FALLBACK_AVAILABLE:
+            success = simple_text_extraction_fallback(input_path, output_path)
+            if success:
+                method_used = "simple text extraction (last resort)"
+        
         if not success:
             return {
                 'success': False,
-                'error': 'Both conversion methods failed',
+                'error': 'All conversion methods failed. The DOCX file may be corrupted or have an unsupported format.',
                 'method': None
             }
         
