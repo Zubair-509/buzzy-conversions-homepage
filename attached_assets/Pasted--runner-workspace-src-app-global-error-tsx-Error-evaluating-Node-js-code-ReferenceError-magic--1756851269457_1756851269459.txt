@@ -1,0 +1,52 @@
+⨯ ./runner/workspace/src/app/global-error.tsx
+Error evaluating Node.js code
+ReferenceError: magic_string_1 is not defined
+    [at Object.componentTagger (/home/runner/workspace/src/visual-edits/component-tagger-loader.js:403:20)]
+    [at LOADER_EXECUTION (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4134)]
+    [at runSyncOrAsync (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4145)]
+    [at iterateNormalLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5782)]
+    [at /home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5426]
+    [at readResource (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:468:11)]
+    [at /home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:6160]
+    [at processResource (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5308)]
+    [at iteratePitchingLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4667)]
+    [at iteratePitchingLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4764)]
+
+
+
+./runner/workspace/src/app/layout.tsx
+Error evaluating Node.js code
+ReferenceError: magic_string_1 is not defined
+    [at Object.componentTagger (/home/runner/workspace/src/visual-edits/component-tagger-loader.js:403:20)]
+    [at LOADER_EXECUTION (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4134)]
+    [at runSyncOrAsync (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4145)]
+    [at iterateNormalLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5782)]
+    [at /home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5426]
+    [at readResource (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:468:11)]
+    [at /home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:6160]
+    [at processResource (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5308)]
+    [at iteratePitchingLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4667)]
+    [at iteratePitchingLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4764)]
+
+
+
+./runner/workspace/src/app/page.tsx
+Error evaluating Node.js code
+ReferenceError: magic_string_1 is not defined
+    [at Object.componentTagger (/home/runner/workspace/src/visual-edits/component-tagger-loader.js:403:20)]
+    [at LOADER_EXECUTION (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4134)]
+    [at runSyncOrAsync (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4145)]
+    [at iterateNormalLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5782)]
+    [at /home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5426]
+    [at readResource (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:468:11)]
+    [at /home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:6160]
+    [at processResource (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5308)]
+    [at iteratePitchingLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4667)]
+    [at iteratePitchingLoaders (/home/runner/workspace/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4764)]
+
+
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 4.7s
+ GET / 500 in 13203ms
+ ⚠ Cross origin request detected from 6d866287-1d39-4148-bf1b-36c1a96da7b3-00-37xfh38xt1b7q.picard.replit.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
