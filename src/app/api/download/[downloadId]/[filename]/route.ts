@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-interface RouteParams {
-  params: {
-    downloadId: string;
-    filename: string;
-  };
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest, 
+  { params }: { params: Promise<{ downloadId: string; filename: string }> }
+) {
   try {
     const { downloadId, filename } = await params;
     

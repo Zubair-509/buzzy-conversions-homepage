@@ -20,6 +20,14 @@ interface FormData {
   acceptTerms: boolean;
 }
 
+interface FormErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  acceptTerms?: string;
+}
+
 interface PasswordRequirement {
   text: string;
   met: boolean;
@@ -35,7 +43,7 @@ export default function SignUpPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const passwordRequirements: PasswordRequirement[] = [
     { text: "At least 8 characters", met: formData.password.length >= 8 },
@@ -45,7 +53,7 @@ export default function SignUpPage() {
   ];
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<FormData> = {};
+    const newErrors: FormErrors = {};
 
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
