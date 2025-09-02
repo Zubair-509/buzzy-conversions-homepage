@@ -2,9 +2,7 @@
 [phases.setup]
 nixPkgs = [
   "nodejs_20", 
-  "python311", 
-  "python311Packages.setuptools",
-  "python311Packages.pip",
+  "python311Full",
   "python311Packages.flask", 
   "python311Packages.flask-cors",
   "python311Packages.flask-sqlalchemy",
@@ -18,7 +16,9 @@ nixPkgs = [
 [phases.install]
 cmds = [
   "npm install --legacy-peer-deps",
-  "/nix/var/nix/profiles/default/bin/python -m pip install --break-system-packages pdf2docx"
+  "curl -sSL https://install.python-poetry.org | python3 -",
+  "python3 -m ensurepip --upgrade",
+  "python3 -m pip install --user pdf2docx"
 ]
 
 [phases.build]
