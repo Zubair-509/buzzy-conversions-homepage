@@ -1,4 +1,3 @@
-
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = componentTagger;
@@ -354,8 +353,8 @@ const findMapContext = (node, variables) => {
             const arrayName = (_d = current.callee.object) === null || _d === void 0 ? void 0 : _d.name;
             const mapCallback = (_e = current.arguments) === null || _e === void 0 ? void 0 : _e[0];
             if (arrayName && (mapCallback === null || mapCallback === void 0 ? void 0 : mapCallback.type) === 'ArrowFunctionExpression') {
-                const itemParam = (_f = mapCallback.params) === null || _f === void 0 ? void 0 : _f[0];
-                const indexParam = (_g = mapCallback.params) === null || _g === void 0 ? void 0 : _g[1];
+                const itemParam = (_f = mapCallback.params) === null || _f === void 0 ? void 0 : _f.at(0);
+                const indexParam = (_g = mapCallback.params) === null || _g === void 0 ? void 0 : _g.at(1);
                 if ((itemParam === null || itemParam === void 0 ? void 0 : itemParam.type) === 'Identifier') {
                     const varInfo = variables.get(arrayName);
                     return {
@@ -400,7 +399,7 @@ function componentTagger(src, map) {
             sourceType: 'module',
             plugins: ['jsx', 'typescript'],
         });
-        const ms = new magic_string_1.default(src);
+        const ms = new MagicString(src);
         const rel = path.relative(process.cwd(), this.resourcePath);
         let mutated = false;
         // Add parent references to AST nodes for upward traversal (non-enumerable to avoid infinite recursion)
