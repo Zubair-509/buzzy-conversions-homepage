@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, Copyright } from "lucide-react";
@@ -42,6 +42,16 @@ const socialLinks = [
 export default function Footer() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 200);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,14 +177,16 @@ export default function Footer() {
       </footer>
 
       {/* Floating Scroll to Top Button with Neon Glow */}
-      <Button
-        onClick={scrollToTop}
-        size="sm"
-        className="sticky bottom-8 left-8 w-14 h-14 rounded-full glass glass-hover neon-glow-hover bg-gradient-neon text-white border-0 hover:scale-110 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 z-50 animate-float ripple shadow-lg ml-auto"
-        aria-label="Scroll to top of page"
-      >
-        <ArrowRight className="w-5 h-5 rotate-[-90deg] drop-shadow-sm" />
-      </Button>
+      {showScrollTop && (
+        <Button
+          onClick={scrollToTop}
+          size="sm"
+          className="fixed bottom-5 left-5 w-14 h-14 rounded-full glass glass-hover neon-glow-hover bg-gradient-neon text-white border-0 hover:scale-110 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 z-50 animate-float ripple shadow-lg"
+          aria-label="Scroll to top of page"
+        >
+          <ArrowRight className="w-5 h-5 rotate-[-90deg] drop-shadow-sm" />
+        </Button>
+      )}
     </>
   );
 }
