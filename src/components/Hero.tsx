@@ -15,8 +15,8 @@ export default function Hero({ className = "", enableMotion = true }: HeroProps)
   const [showCursor, setShowCursor] = useState(true);
   const [typingComplete, setTypingComplete] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const typingRef = useRef<NodeJS.Timeout>();
-  const cursorRef = useRef<NodeJS.Timeout>();
+  const typingRef = useRef<NodeJS.Timeout | null>(null);
+  const cursorRef = useRef<NodeJS.Timeout | null>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
 
   const fullText = "Convert More Visitors Into Customers";

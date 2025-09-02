@@ -38,7 +38,7 @@ export default function HowItWorks({ className = "" }: HowItWorksProps) {
   const [visibleSteps, setVisibleSteps] = useState<Set<number>>(new Set());
   const [reducedMotion, setReducedMotion] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check for reduced motion preference
   useEffect(() => {
