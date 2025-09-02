@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
     const apiUrl = process.env.PYTHON_API_URL || 'http://127.0.0.1:8001';
     return [
       {
-        source: '/api/:path*',
+        source: '/python-api/:path*',
         destination: `${apiUrl}/api/:path*`,
       },
     ];
