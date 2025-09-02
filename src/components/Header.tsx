@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
@@ -47,35 +48,35 @@ export default function Header() {
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <div className="flex items-center">
-            <a
+            <Link
               href="/"
               className="no-underline"
             >
               <Logo size="md" showText={true} />
-            </a>
+            </Link>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             {navigationLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
                 href={link.href}
                 className="text-muted-foreground hover:text-primary transition-all duration-300 text-sm font-medium no-underline hover:neon-text hover:animate-neon-pulse"
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
           </nav>
 
           {/* Desktop Auth Actions */}
           <div className="hidden md:flex items-center space-x-4">
-            <a
+            <Link
               href="/sign-in"
               className="text-muted-foreground hover:text-primary transition-all duration-300 text-sm font-medium no-underline hover:neon-text"
             >
               Sign In
-            </a>
+            </Link>
             <Button
               onClick={handleGetStarted}
               className="glass-hover neon-glow-hover bg-gradient-neon text-white px-6 py-2 text-sm font-medium transition-all duration-300 border-0 ripple"
