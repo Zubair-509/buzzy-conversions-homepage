@@ -18,6 +18,14 @@ UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'outputs'
 ALLOWED_EXTENSIONS = {'pdf'}
 
+# Get the directory where this script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+
+# Use absolute paths relative to project root
+UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads')
+OUTPUT_FOLDER = os.path.join(PROJECT_ROOT, 'outputs')
+
 # Create directories if they don't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
