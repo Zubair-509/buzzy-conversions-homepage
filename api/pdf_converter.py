@@ -150,5 +150,5 @@ if __name__ == '__main__':
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
     # Run the Flask app
-    port = int(os.environ.get('PYTHON_PORT', 8001))
+    port = int(os.environ.get('PORT', os.environ.get('PYTHON_PORT', 8001)))
     app.run(host='0.0.0.0', port=port, debug=False)

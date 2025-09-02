@@ -6,7 +6,7 @@
         "dev": "next dev --turbopack",
         "build": "next build",
         "start": "next start",
-        "start:railway": "npm run start & python api/pdf_converter.py",
+        "start:railway": "concurrently \"npm run start\" \"python api/pdf_converter.py\"",
         "lint": "next lint"
     },
     "dependencies": {
