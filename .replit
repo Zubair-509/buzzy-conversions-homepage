@@ -32,13 +32,13 @@ externalPort = 3000
 
 [[ports]]
 localPort = 5000
-externalPort = 80
+externalPort = 5000
 
 [agent]
 expertMode = true
 
 [workflows]
-runButton = "Project"
+runButton = "Full Stack App"
 
 [[workflows.workflow]]
 name = "Project"
@@ -75,3 +75,16 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "Full Stack App"
+author = 47166381
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python api/pdf_converter.py"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev -- --port 5000 --hostname 0.0.0.0"
