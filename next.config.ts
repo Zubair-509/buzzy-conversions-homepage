@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
     ],
   },
   outputFileTracingRoot: path.resolve(__dirname, '../../'),
+  experimental: {
+    serverComponentsExternalPackages: ['pdf2docx'],
+  },
   async headers() {
     return [
       {

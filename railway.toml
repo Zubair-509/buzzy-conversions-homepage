@@ -1,0 +1,14 @@
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm run start:railway"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[environments.production.variables]
+NODE_ENV = "production"
+PYTHON_API_URL = "http://localhost:8001"
