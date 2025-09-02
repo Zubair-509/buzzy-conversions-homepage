@@ -1,9 +1,21 @@
 
 [phases.setup]
-nixPkgs = ["nodejs_20", "python311", "python311Packages.pip"]
+nixPkgs = [
+  "nodejs_20", 
+  "python311", 
+  "python311Packages.flask", 
+  "python311Packages.flask-cors",
+  "python311Packages.werkzeug",
+  "python311Packages.gunicorn",
+  "python311Packages.psycopg2"
+]
+nixLibs = ["stdenv.cc.cc.lib"]
 
 [phases.install]
-cmds = ["npm install --legacy-peer-deps", "pip install -r requirements.txt"]
+cmds = [
+  "npm install --legacy-peer-deps",
+  "python -m pip install --user pdf2docx python-docx email_validator flask-sqlalchemy"
+]
 
 [phases.build]
 cmds = ["npm run build"]
