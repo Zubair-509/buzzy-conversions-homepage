@@ -3,10 +3,12 @@ run = "npm run dev"
 
 [nix]
 channel = "stable-25_05"
-packages = ["imagemagickBig"]
+packages = ["imagemagickBig", "openssl", "postgresql"]
 
 [deployment]
-run = ["sh", "-c", "npm run dev -- --port 5000 --hostname 0.0.0.0 & python api/pdf_converter.py"]
+run = ["bash", "-c", "npm start & python api/pdf_converter.py"]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
 
 [[ports]]
 localPort = 3000
@@ -30,15 +32,12 @@ externalPort = 3000
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 8000
-externalPort = 8000
+externalPort = 80
 
 [[ports]]
 localPort = 8001
 externalPort = 4200
+exposeLocalhost = true
 
 [agent]
 expertMode = true
@@ -53,14 +52,14 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Development Server"
+args = "Frontend"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "PDF Converter API"
+args = "Backend API"
 
 [[workflows.workflow]]
-name = "Development Server"
+name = "Frontend"
 author = "agent"
 
 [[workflows.workflow.tasks]]
@@ -72,13 +71,12 @@ waitForPort = 5000
 outputType = "webview"
 
 [[workflows.workflow]]
-name = "PDF Converter API"
+name = "Backend API"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python api/pdf_converter.py"
-waitForPort = 8000
 
 [workflows.workflow.metadata]
 outputType = "console"
