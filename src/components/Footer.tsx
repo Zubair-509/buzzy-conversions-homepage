@@ -61,6 +61,14 @@ export default function Footer() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const [scrollY, setScrollY] = useState(0);
+
+  useState(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <>
       <footer className="glass border-t animate-border-glow relative">
@@ -170,7 +178,11 @@ export default function Footer() {
       <Button
         onClick={scrollToTop}
         size="sm"
-        className="sticky bottom-8 left-8 w-14 h-14 rounded-full glass glass-hover neon-glow-hover bg-gradient-neon text-white border-0 hover:scale-110 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 z-50 animate-float ripple shadow-lg ml-auto"
+        className="fixed w-14 h-14 rounded-full glass glass-hover neon-glow-hover bg-gradient-neon text-white border-0 hover:scale-110 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 z-50 animate-float ripple shadow-lg"
+        style={{
+          bottom: `${32 + scrollY * 0.1}px`,
+          left: `${32 + scrollY * 0.05}px`,
+        }}
         aria-label="Scroll to top of page"
       >
         <ArrowRight className="w-5 h-5 rotate-[-90deg] drop-shadow-sm" />
