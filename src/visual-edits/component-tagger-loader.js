@@ -392,6 +392,7 @@ const getSemanticName = (node, mapContext, imageAliases) => {
 /* ───────────────────────────────────────────── Loader */
 function componentTagger(src, map) {
     const done = this.async();
+    let modifiedSource = null;
     try {
         if (/node_modules/.test(this.resourcePath))
             return done(null, src, map);
@@ -466,10 +467,10 @@ function componentTagger(src, map) {
         });
         if (!mutated)
             return done(null, src, map);
-        const out = ms.toString();
+        modifiedSource = ms.toString();
         const outMap = ms.generateMap({ hires: true });
         /* Turbopack expects the sourcemap as a JSON *string*. */
-        done(null, out, JSON.stringify(outMap));
+        done(null, modifiedSource, JSON.stringify(outMap));
     }
     catch (err) {
         done(err);

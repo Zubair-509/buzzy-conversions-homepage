@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -15,6 +14,9 @@ export default function PDFToWordPage() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [conversionMode, setConversionMode] = useState<'standard' | 'fast' | 'accurate' | 'hybrid'>('standard');
+  const [conversionMethod, setConversionMethod] = useState<string | null>(null);
+  const [fileSize, setFileSize] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (selectedFile: File) => {
@@ -23,8 +25,12 @@ export default function PDFToWordPage() {
       setConversionStatus('idle');
       setErrorMessage('');
       setDownloadUrl(null);
+      setConversionMethod(null);
+      setFileSize(selectedFile.size);
     } else {
       setErrorMessage('Please select a valid PDF file.');
+      setFile(null);
+      setFileSize(0);
     }
   };
 
@@ -60,9 +66,10 @@ export default function PDFToWordPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('mode', conversionMode);
 
       setConversionStatus('converting');
-      
+
       const response = await fetch('/api/convert/pdf-to-word', {
         method: 'POST',
         body: formData,
@@ -74,12 +81,16 @@ export default function PDFToWordPage() {
         setConversionStatus('completed');
         setDownloadUrl(`/api/download/${result.download_id}/${result.filename}`);
         setDownloadFilename(result.filename);
+        setConversionMethod(result.conversion_method || 'Unknown');
+        setFileSize(result.output_size || 0);
       } else {
         throw new Error(result.error || 'Conversion failed');
       }
     } catch (error) {
       setConversionStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred.');
+      setConversionMethod(null);
+      setFileSize(0);
     } finally {
       setIsConverting(false);
     }
@@ -99,17 +110,17 @@ export default function PDFToWordPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       {/* Hero Section */}
       <section className="relative py-32 lg:py-40 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/20"></div>
-        
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center space-y-8">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto">
               <FileText className="w-10 h-10 text-primary" />
             </div>
-            
+
             <div className="space-y-4">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold bg-gradient-to-r from-primary via-primary/90 to-primary/80 bg-clip-text text-transparent">
                 PDF to Word Converter
@@ -140,12 +151,16 @@ export default function PDFToWordPage() {
               >
                 <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">
-                  {file ? file.name : 'Drop your PDF here'}
+                  {file ? file.name : 'Drop your PDF file here'}
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  {file ? `File size: ${(file.size / 1024 / 1024).toFixed(2)} MB` : 'or click to browse files'}
+                  {file ? `File size: ${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Support for PDF files up to 16MB'}
                 </p>
-                <Button className="bg-gradient-to-r from-primary to-primary/90">
+                <Button 
+                  variant="outline" 
+                  className="bg-gradient-to-r from-primary to-primary/90"
+                  disabled={isConverting}
+                >
                   {file ? 'Change File' : 'Choose File'}
                 </Button>
                 <input
@@ -157,57 +172,104 @@ export default function PDFToWordPage() {
                 />
               </div>
 
-              {/* Conversion Options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Output Format</label>
-                  <select className="w-full p-3 border rounded-lg">
-                    <option>Microsoft Word (.docx)</option>
-                    <option>Rich Text Format (.rtf)</option>
-                  </select>
+              {/* Conversion Mode Selector */}
+              {file && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Conversion Mode</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      {
+                        mode: 'standard' as const,
+                        title: 'Auto (Recommended)',
+                        description: 'Automatically detects PDF type and uses the best method',
+                        icon: <Settings className="w-5 h-5" />
+                      },
+                      {
+                        mode: 'fast' as const,
+                        title: 'Fast',
+                        description: 'Quick conversion with basic formatting',
+                        icon: <Zap className="w-5 h-5" />
+                      },
+                      {
+                        mode: 'accurate' as const,
+                        title: 'Accurate',
+                        description: 'Preserves complex formatting and layout',
+                        icon: <CheckCircle className="w-5 h-5" />
+                      },
+                      {
+                        mode: 'hybrid' as const,
+                        title: 'Hybrid',
+                        description: 'Background image with editable text overlay',
+                        icon: <Shield className="w-5 h-5" />
+                      }
+                    ].map((option) => (
+                      <Card 
+                        key={option.mode}
+                        className={`cursor-pointer transition-all ${
+                          conversionMode === option.mode 
+                            ? 'ring-2 ring-primary border-primary/50' 
+                            : 'hover:border-primary/30'
+                        }`}
+                        onClick={() => setConversionMode(option.mode)}
+                      >
+                        <CardContent className="p-4 text-center">
+                          <div className="flex justify-center mb-2">
+                            {option.icon}
+                          </div>
+                          <h4 className="font-semibold text-sm mb-1">{option.title}</h4>
+                          <p className="text-xs text-muted-foreground">{option.description}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Conversion Mode</label>
-                  <select className="w-full p-3 border rounded-lg">
-                    <option>Standard (Recommended)</option>
-                    <option>High Accuracy</option>
-                    <option>Fast Conversion</option>
-                  </select>
-                </div>
-              </div>
+              )}
 
               {/* Status Messages */}
               {conversionStatus === 'uploading' && (
-                <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-blue-700">Uploading file...</p>
+                <div className="text-center p-6 bg-primary/5 rounded-lg">
+                  <Upload className="w-8 h-8 text-primary mx-auto mb-2" />
+                  <p className="text-primary font-medium">Uploading file...</p>
                 </div>
               )}
-              
+
               {conversionStatus === 'converting' && (
-                <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="animate-spin w-6 h-6 border-2 border-yellow-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-yellow-700">Converting PDF to Word... This may take a moment.</p>
+                <div className="text-center p-6 bg-primary/5 rounded-lg">
+                  <Settings className="w-8 h-8 text-primary mx-auto mb-2 animate-spin" />
+                  <p className="text-primary font-medium">Converting PDF to Word...</p>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Using {conversionMode} mode - This may take a few moments
+                  </p>
+                  <div className="mt-4 w-full bg-primary/10 rounded-full h-2">
+                    <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                  </div>
                 </div>
               )}
-              
+
               {conversionStatus === 'completed' && downloadUrl && (
-                <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                  <p className="text-green-700 mb-4">Conversion completed successfully!</p>
+                <div className="text-center p-6 bg-green-500/10 rounded-lg">
+                  <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                  <p className="text-green-500 font-medium mb-2">Conversion completed successfully!</p>
+                  <div className="text-sm text-muted-foreground mb-4 space-y-1">
+                    {conversionMethod && <p>Method: {conversionMethod}</p>}
+                    {fileSize > 0 && <p>Output size: {(fileSize / 1024 / 1024).toFixed(2)} MB</p>}
+                  </div>
                   <Button 
-                    onClick={handleDownload}
-                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                    onClick={() => window.open(downloadUrl, '_blank')}
+                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download Word File
+                    Download {downloadFilename}
                   </Button>
                 </div>
               )}
-              
-              {conversionStatus === 'error' && (
-                <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-700">{errorMessage}</p>
+
+              {conversionStatus === 'error' && errorMessage && (
+                <div className="text-center p-6 bg-red-500/10 rounded-lg">
+                  <p className="text-red-500 font-medium">Error: {errorMessage}</p>
+                  <p className="text-muted-foreground text-sm mt-2">
+                    Try a different conversion mode or check if your PDF is valid.
+                  </p>
                 </div>
               )}
 
