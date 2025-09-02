@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     
     // Forward the request to the Python backend
-    const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
+    const pythonApiUrl = process.env.PYTHON_API_URL || 'http://0.0.0.0:8000';
     const response = await fetch(`${pythonApiUrl}/api/convert/pdf-to-word`, {
       method: 'POST',
       body: formData,
