@@ -675,19 +675,179 @@ def download_file(download_id, filename):
         print(traceback.format_exc())
         return jsonify({'error': f'Download failed: {str(e)}'}), 500
 
+# Import Word to PDF converter
+try:
+    from word_to_pdf_converter import convert_single_file as word_convert_single, convert_batch as word_convert_batch
+    from word_to_pdf_converter import DOCX2PDF_AVAILABLE, FALLBACK_AVAILABLE
+    WORD_TO_PDF_AVAILABLE = True
+except ImportError:
+    WORD_TO_PDF_AVAILABLE = False
+    print("Warning: Word to PDF converter not available")
+
+@app.route('/api/convert/word-to-pdf', methods=['POST'])
+def convert_word_to_pdf_endpoint():
+    """Convert Word documents to PDF"""
+    if not WORD_TO_PDF_AVAILABLE:
+        return jsonify({'error': 'Word to PDF conversion not available. Missing dependencies.'}), 503
+    
+    try:
+        # Check if file is present in request
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+
+        if not file.filename.lower().endswith('.docx'):
+            return jsonify({'error': 'Invalid file type. Only DOCX files are allowed.'}), 400
+
+        # Generate unique filename to avoid conflicts
+        unique_id = str(uuid.uuid4())
+        original_filename = secure_filename(file.filename or 'uploaded_file.docx')
+
+        # Save uploaded file
+        docx_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_{original_filename}")
+        file.save(docx_path)
+
+        try:
+            # Convert DOCX to PDF
+            result = word_convert_single(docx_path, OUTPUT_FOLDER)
+            
+            # Cleanup input file
+            cleanup_file(docx_path)
+
+            if not result['success']:
+                return jsonify({'error': f"Conversion failed: {result['error']}"}), 500
+
+            return jsonify({
+                'success': True,
+                'message': f'Word document converted to PDF successfully using {result["method"]}',
+                'download_id': unique_id,
+                'filename': result['output_file'],
+                'conversion_method': result['method'],
+                'file_size': result['file_size']
+            })
+
+        except Exception as conv_error:
+            # Cleanup files on conversion error
+            cleanup_file(docx_path)
+            print(f"Word to PDF conversion error: {conv_error}")
+            print(traceback.format_exc())
+            return jsonify({'error': f'Conversion failed: {str(conv_error)}'}), 500
+
+    except Exception as e:
+        print(f"Word to PDF general error: {e}")
+        print(traceback.format_exc())
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+@app.route('/api/convert/word-to-pdf/batch', methods=['POST'])
+def batch_convert_word_to_pdf_endpoint():
+    """Handle batch conversion of multiple DOCX files"""
+    if not WORD_TO_PDF_AVAILABLE:
+        return jsonify({'error': 'Word to PDF conversion not available. Missing dependencies.'}), 503
+    
+    try:
+        files = request.files.getlist('files')
+        
+        if not files:
+            return jsonify({'error': 'No files provided'}), 400
+        
+        docx_paths = []
+        file_info = []
+        
+        # Save all uploaded files
+        for file in files:
+            if file.filename and file.filename.lower().endswith('.docx'):
+                unique_id = str(uuid.uuid4())
+                original_filename = secure_filename(file.filename)
+                docx_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_{original_filename}")
+                file.save(docx_path)
+                
+                docx_paths.append(docx_path)
+                file_info.append({
+                    'original_name': original_filename,
+                    'unique_id': unique_id,
+                    'path': docx_path
+                })
+        
+        if not docx_paths:
+            return jsonify({'error': 'No valid DOCX files found'}), 400
+        
+        # Process batch conversion
+        results = []
+        successful_conversions = 0
+        
+        for info in file_info:
+            try:
+                result = word_convert_single(info['path'], OUTPUT_FOLDER)
+                
+                if result['success']:
+                    successful_conversions += 1
+                    results.append({
+                        'original_file': info['original_name'],
+                        'output_file': result['output_file'],
+                        'download_id': info['unique_id'],
+                        'success': True,
+                        'method': result['method'],
+                        'file_size': result['file_size']
+                    })
+                else:
+                    results.append({
+                        'original_file': info['original_name'],
+                        'success': False,
+                        'error': result['error']
+                    })
+                    
+            except Exception as e:
+                results.append({
+                    'original_file': info['original_name'],
+                    'success': False,
+                    'error': str(e)
+                })
+        
+        # Cleanup input files
+        for docx_path in docx_paths:
+            cleanup_file(docx_path)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Batch conversion completed. {successful_conversions}/{len(results)} files converted successfully.',
+            'total_files': len(results),
+            'successful_conversions': successful_conversions,
+            'results': results
+        })
+        
+    except Exception as e:
+        print(f"Word to PDF batch conversion error: {e}")
+        print(traceback.format_exc())
+        return jsonify({'error': f'Batch conversion failed: {str(e)}'}), 500
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
+    # Check Word to PDF availability
+    word_pdf_methods = []
+    if WORD_TO_PDF_AVAILABLE:
+        if DOCX2PDF_AVAILABLE:
+            word_pdf_methods.append('docx2pdf (primary)')
+        if FALLBACK_AVAILABLE:
+            word_pdf_methods.append('python-docx + reportlab (fallback)')
+    
     return jsonify({
         'status': 'healthy', 
-        'service': 'Enhanced PDF to Word Converter',
+        'service': 'Enhanced PDF & Word Converter',
         'features': [
             'Advanced formatting preservation',
             'OCR for scanned PDFs', 
             'Multi-column layout detection',
             'Table and image extraction',
             'Batch processing',
-            'Hybrid mode with background images'
-        ]
+            'Hybrid mode with background images',
+            'Word to PDF conversion',
+            'High-accuracy DOCX processing'
+        ],
+        'word_to_pdf_methods': word_pdf_methods if WORD_TO_PDF_AVAILABLE else ['Not available']
     })
 
 @app.errorhandler(413)
