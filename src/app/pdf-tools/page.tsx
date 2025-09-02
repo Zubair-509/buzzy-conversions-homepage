@@ -188,21 +188,7 @@ export default function PDFToolsPage() {
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-lg px-8 py-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl"
-              >
-                Start Converting Now
-              </Button>
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="text-lg px-8 py-6 rounded-xl border-2 hover:bg-primary/5 transition-all duration-300"
-              >
-                View All Tools
-              </Button>
-            </div>
+            
           </div>
         </div>
       </section>
