@@ -47,48 +47,48 @@ def convert_pdf_to_word():
         # Check if file is present in request
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
-        
+
         file = request.files['file']
-        
+
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
-        
+
         if not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type. Only PDF files are allowed.'}), 400
-        
+
         # Generate unique filename to avoid conflicts
         unique_id = str(uuid.uuid4())
         original_filename = secure_filename(file.filename or 'uploaded_file.pdf')
         filename_without_ext = os.path.splitext(original_filename)[0]
-        
+
         # Save uploaded file
         pdf_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_{original_filename}")
         file.save(pdf_path)
-        
+
         # Generate output path
         docx_filename = f"{filename_without_ext}_{unique_id}.docx"
         docx_path = os.path.join(OUTPUT_FOLDER, docx_filename)
-        
+
         # Convert PDF to Word
         try:
             cv = Converter(pdf_path)
             cv.convert(docx_path, start=0)
             cv.close()
-            
+
             # Cleanup input file
             cleanup_file(pdf_path)
-            
+
             # Check if conversion was successful
             if not os.path.exists(docx_path):
                 return jsonify({'error': 'Conversion failed. Output file was not created.'}), 500
-            
+
             return jsonify({
                 'success': True,
                 'message': 'PDF converted to Word successfully',
                 'download_id': unique_id,
                 'filename': docx_filename
             })
-            
+
         except Exception as conv_error:
             # Cleanup files on conversion error
             cleanup_file(pdf_path)
@@ -96,7 +96,7 @@ def convert_pdf_to_word():
             print(f"Conversion error: {conv_error}")
             print(traceback.format_exc())
             return jsonify({'error': f'Conversion failed: {str(conv_error)}'}), 500
-            
+
     except Exception as e:
         print(f"General error: {e}")
         print(traceback.format_exc())
@@ -106,10 +106,10 @@ def convert_pdf_to_word():
 def download_file(download_id, filename):
     try:
         file_path = os.path.join(OUTPUT_FOLDER, filename)
-        
+
         if not os.path.exists(file_path):
             return jsonify({'error': 'File not found'}), 404
-        
+
         # Create response with the file
         response = send_file(
             file_path,
@@ -117,7 +117,7 @@ def download_file(download_id, filename):
             download_name=filename,
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        
+
         # Schedule file cleanup after download
         # Note: In production, you might want to implement a cleanup job
         def cleanup_after_download():
@@ -127,11 +127,11 @@ def download_file(download_id, filename):
                 time.sleep(30)  # Wait 30 seconds before cleanup
                 cleanup_file(file_path)
             threading.Thread(target=delayed_cleanup).start()
-        
+
         cleanup_after_download()
-        
+
         return response
-        
+
     except Exception as e:
         print(f"Download error: {e}")
         print(traceback.format_exc())
@@ -148,7 +148,7 @@ def too_large(e):
 if __name__ == '__main__':
     # Set maximum file size to 16MB
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-    
+
     # Run the Flask app
-    port = int(os.environ.get('PORT', 8000))
+    port = int(os.environ.get('PORT', 8001))
     app.run(host='0.0.0.0', port=port, debug=True)

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { downloadId, filename } = await params;
     
     // Forward the request to the Python backend
-    const pythonApiUrl = process.env.PYTHON_API_URL || 'http://0.0.0.0:8000';
+    const pythonApiUrl = process.env.PYTHON_API_URL || 'http://0.0.0.0:8001';
     const response = await fetch(`${pythonApiUrl}/api/download/${downloadId}/${filename}`);
     
     if (!response.ok) {
