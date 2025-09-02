@@ -7,6 +7,7 @@
         "build": "next build",
         "start": "next start",
         "start:railway": "concurrently \"npm run start\" \"python api/pdf_converter.py\"",
+        "start:render": "next start -p $PORT",
         "lint": "next lint"
     },
     "dependencies": {
