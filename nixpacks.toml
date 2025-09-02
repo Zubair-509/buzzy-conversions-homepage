@@ -4,6 +4,7 @@ nixPkgs = [
   "nodejs_20", 
   "python311", 
   "python311Packages.setuptools",
+  "python311Packages.pip",
   "python311Packages.flask", 
   "python311Packages.flask-cors",
   "python311Packages.flask-sqlalchemy",
@@ -11,20 +12,13 @@ nixPkgs = [
   "python311Packages.gunicorn",
   "python311Packages.psycopg2",
   "python311Packages.python-docx",
-  "python311Packages.email-validator",
-  "python311Packages.wheel",
-  "python311Packages.fonttools",
-  "python311Packages.numpy",
-  "python311Packages.opencv4",
-  "python311Packages.fire",
-  "python311Packages.lxml",
-  "python311Packages.pymupdf"
+  "python311Packages.email-validator"
 ]
-nixLibs = ["stdenv.cc.cc.lib"]
 
 [phases.install]
 cmds = [
-  "npm install --legacy-peer-deps"
+  "npm install --legacy-peer-deps",
+  "/nix/var/nix/profiles/default/bin/python -m pip install --break-system-packages pdf2docx"
 ]
 
 [phases.build]
