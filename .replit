@@ -6,7 +6,7 @@ channel = "stable-25_05"
 packages = ["imagemagickBig"]
 
 [deployment]
-run = ["sh", "-c", "npm run dev"]
+run = ["sh", "-c", "npm run dev -- --port 5000 --hostname 0.0.0.0 & python api/pdf_converter.py"]
 
 [[ports]]
 localPort = 3000
