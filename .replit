@@ -1,8 +1,9 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "python-3.11"]
 run = "npm run dev"
 
 [nix]
 channel = "stable-25_05"
+packages = ["imagemagickBig"]
 
 [deployment]
 run = ["sh", "-c", "npm run dev"]
@@ -31,6 +32,10 @@ externalPort = 3000
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 8000
+externalPort = 8000
+
 [agent]
 expertMode = true
 
@@ -46,6 +51,10 @@ author = "agent"
 task = "workflow.run"
 args = "Development Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "PDF Converter API"
+
 [[workflows.workflow]]
 name = "Development Server"
 author = "agent"
@@ -57,3 +66,15 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "PDF Converter API"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python api/pdf_converter.py"
+waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"

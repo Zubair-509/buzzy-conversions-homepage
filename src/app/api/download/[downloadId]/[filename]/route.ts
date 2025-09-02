@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+interface RouteParams {
+  params: {
+    downloadId: string;
+    filename: string;
+  };
+}
+
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { downloadId, filename } = params;
+    
+    // Forward the request to the Python backend
+    const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${pythonApiUrl}/api/download/${downloadId}/${filename}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      return NextResponse.json(errorData, { status: response.status });
+    }
+    
+    // Get the file content as a buffer
+    const fileContent = await response.arrayBuffer();
+    
+    // Return the file with appropriate headers
+    return new NextResponse(fileContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (error) {
+    console.error('Download proxy error:', error);
+    return NextResponse.json(
+      { error: 'Download failed' },
+      { status: 500 }
+    );
+  }
+}
