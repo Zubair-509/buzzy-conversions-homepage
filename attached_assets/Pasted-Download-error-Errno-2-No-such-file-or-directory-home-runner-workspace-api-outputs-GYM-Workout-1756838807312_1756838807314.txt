@@ -1,0 +1,29 @@
+Download error: [Errno 2] No such file or directory: '/home/runner/workspace/api/outputs/GYM_Workout_Plan_Month_2_week_1PPL_083fbc1b-e216-4090-a140-ab6048a623f7.docx'
+Traceback (most recent call last):
+  File "/home/runner/workspace/api/pdf_converter.py", line 106, in download_file
+    response = send_file(
+               ^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/helpers.py", line 518, in send_file
+    return werkzeug.utils.send_file(  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/utils.py", line 428, in send_file
+    stat = os.stat(path)
+           ^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/runner/workspace/api/outputs/GYM_Workout_Plan_Month_2_week_1PPL_083fbc1b-e216-4090-a140-ab6048a623f7.docx'
+
+[INFO] 127.0.0.1 - - [02/Sep/2025 18:40:29] "GET /api/download/083fbc1b-e216-4090-a140-ab6048a623f7/GYM_Workout_Plan_Month_2_week_1PPL_083fbc1b-e216-4090-a140-ab6048a623f7.docx HTTP/1.1" 500 -
+Download error: [Errno 2] No such file or directory: '/home/runner/workspace/api/outputs/GYM_Workout_Plan_Month_2_week_1PPL_083fbc1b-e216-4090-a140-ab6048a623f7.docx'
+Traceback (most recent call last):
+  File "/home/runner/workspace/api/pdf_converter.py", line 106, in download_file
+    response = send_file(
+               ^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/helpers.py", line 518, in send_file
+    return werkzeug.utils.send_file(  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/utils.py", line 428, in send_file
+    stat = os.stat(path)
+           ^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/runner/workspace/api/outputs/GYM_Workout_Plan_Month_2_week_1PPL_083fbc1b-e216-4090-a140-ab6048a623f7.docx'
+
+[INFO] 127.0.0.1 - - [02/Sep/2025 18:40:33] "GET /api/download/083fbc1b-e216-4090-a140-ab6048a623f7/GYM_Workout_Plan_Month_2_week_1PPL_083fbc1b-e216-4090-a140-ab6048a623f7.docx HTTP/1.1" 500 -
+[INFO]  * Detected change in '/home/runner/workspace/api/pdf_converter.py', reloading
