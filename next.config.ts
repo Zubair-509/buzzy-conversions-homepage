@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
-const LOADER = path.resolve(__dirname, 'src/visual-edits/component-tagger-loader.js');
-
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -18,6 +16,21 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingRoot: path.resolve(__dirname, '../../'),
   serverExternalPackages: ['pdf2docx'],
+
+  // Optimization settings
+  poweredByHeader: false,
+  compress: true,
+
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-tabs',
+    ],
+  },
   async headers() {
     return [
       {
@@ -31,13 +44,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  turbopack: {
-    rules: {
-      "*.{jsx,tsx}": {
-        loaders: [LOADER]
-      }
-    }
-  }
 };
 
 export default nextConfig;

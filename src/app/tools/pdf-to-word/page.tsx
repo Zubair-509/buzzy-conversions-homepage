@@ -6,10 +6,13 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Upload, Settings, Download, Shield, Zap, Clock, CheckCircle } from 'lucide-react';
+import ConversionLoader from '@/components/ui/conversion-loader';
 
 export default function PDFToWordPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [conversionProgress, setConversionProgress] = useState(0);
+  const [conversionStage, setConversionStage] = useState<'analyzing' | 'converting' | 'finalizing'>('analyzing');
   const [conversionStatus, setConversionStatus] = useState<'idle' | 'uploading' | 'converting' | 'completed' | 'error'>('idle');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState<string>('');
@@ -69,20 +72,28 @@ export default function PDFToWordPage() {
       formData.append('mode', conversionMode);
 
       setConversionStatus('converting');
+      setConversionProgress(20);
+      setConversionStage('analyzing');
 
       const response = await fetch('/api/convert/pdf-to-word', {
         method: 'POST',
         body: formData,
       });
 
+      setConversionProgress(60);
+      setConversionStage('converting');
+
       const result = await response.json();
 
       if (response.ok && result.success) {
+        setConversionProgress(90);
+        setConversionStage('finalizing');
         setConversionStatus('completed');
         setDownloadUrl(`/api/download/${result.download_id}/${result.filename}`);
         setDownloadFilename(result.filename);
         setConversionMethod(result.conversion_method || 'Unknown');
         setFileSize(result.output_size || 0);
+        setConversionProgress(100);
       } else {
         throw new Error(result.error || 'Conversion failed');
       }
@@ -384,6 +395,13 @@ export default function PDFToWordPage() {
       </section>
 
       <Footer />
+      
+      {/* Conversion Loader */}
+      <ConversionLoader 
+        isVisible={isConverting}
+        progress={conversionProgress}
+        stage={conversionStage}
+      />
     </div>
   );
 }

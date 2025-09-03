@@ -3,9 +3,9 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "next dev --turbopack",
+        "dev": "next dev --turbopack --hostname 0.0.0.0 --port 5000",
         "build": "next build",
-        "start": "next start",
+        "start": "next start --port 5000 --hostname 0.0.0.0",
         "start:railway": "concurrently \"npm run start\" \"python api/pdf_converter.py\"",
         "start:render": "next start -p $PORT",
         "lint": "next lint"

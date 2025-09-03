@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import VisualEditsMessenger from "../visual-edits/VisualEditsMessenger";
 import ErrorReporter from "@/components/ErrorReporter";
+import PageLoader from "@/components/ui/page-loader";
 import Script from "next/script";
 
 export const metadata: Metadata = {
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <ErrorReporter />
+        <PageLoader />
         <Script
           src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/scripts//route-messenger.js"
           strategy="afterInteractive"
