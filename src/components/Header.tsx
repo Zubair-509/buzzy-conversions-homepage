@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import Logo from "@/components/Logo";
-import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -26,18 +24,14 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    const handleRouteChangeStart = () => setIsLoading(true);
-    const handleRouteChangeComplete = () => setIsLoading(false);
-
-    router.events.on('routeChangeStart', handleRouteChangeStart);
-    router.events.on('routeChangeComplete', handleRouteChangeComplete);
-
-    // Clean up the event listeners
-    return () => {
-      router.events.off('routeChangeStart', handleRouteChangeStart);
-      router.events.off('routeChangeComplete', handleRouteChangeComplete);
+    // App Router doesn't have router.events, so we'll handle loading differently
+    const handleRouteChange = () => {
+      setIsLoading(false);
     };
-  }, [router.events]);
+
+    // Listen for pathname changes to stop loading
+    handleRouteChange();
+  }, [pathname]);
 
 
   const navigationLinks = [

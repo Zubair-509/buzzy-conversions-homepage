@@ -102,7 +102,7 @@ export default function PDFToJPGPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto">
-                <Image className="w-8 h-8 text-primary" alt="High quality image conversion" />
+                <Image className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-display font-semibold">Crystal Clear Quality</h3>
               <p className="text-muted-foreground">Up to 300 DPI for professional results</p>
