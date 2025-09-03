@@ -3,10 +3,10 @@ run = "npm run dev"
 
 [nix]
 channel = "stable-25_05"
-packages = ["imagemagickBig", "openssl", "postgresql"]
+packages = ["freetype", "gumbo", "harfbuzz", "imagemagickBig", "jbig2dec", "lcms2", "libGL", "libGLU", "libimagequant", "libjpeg", "libjpeg_turbo", "libtiff", "libwebp", "libxcrypt", "mupdf", "openjpeg", "openssl", "postgresql", "swig", "tcl", "tk", "xcbuild", "zlib"]
 
 [deployment]
-run = ["npm", "start"]
+run = ["bash", "-c", "npm start & cd backend/src && python api_server.py"]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 
@@ -66,6 +66,10 @@ author = "agent"
 task = "workflow.run"
 args = "Frontend"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "PDF Backend"
+
 [[workflows.workflow]]
 name = "Frontend"
 author = "agent"
@@ -77,3 +81,15 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "PDF Backend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend/src && python api_server.py"
+waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
