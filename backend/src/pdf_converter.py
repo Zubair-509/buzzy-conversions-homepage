@@ -67,42 +67,53 @@ class AdvancedPDFConverter:
     
     def extract_images(self, page: fitz.Page, doc) -> List[Dict]:
         """Extract and save images from page"""
-        image_list = page.get_images()
         extracted_images = []
         
-        for img_index, img in enumerate(image_list):
-            try:
-                xref = img[0]
-                pix = fitz.Pixmap(page.parent, xref)
-                
-                if pix.n - pix.alpha < 4:  # GRAY or RGB
-                    # Convert to PIL Image
-                    img_data = pix.tobytes("ppm")
-                    pil_img = Image.open(io.BytesIO(img_data))
+        try:
+            image_list = page.get_images()
+            
+            for img_index, img in enumerate(image_list):
+                try:
+                    xref = img[0]
                     
-                    # Save image temporarily
-                    img_filename = f"image_{self.image_counter}.png"
-                    img_path = os.path.join(self.temp_dir, img_filename)
-                    pil_img.save(img_path, "PNG")
+                    # Check if document is still valid
+                    if not page.parent or page.parent.is_closed:
+                        print("Document closed, skipping image extraction")
+                        break
                     
-                    # Get image position and size from image list
-                    img_rect = None
+                    pix = fitz.Pixmap(page.parent, xref)
                     
-                    extracted_images.append({
-                        "path": img_path,
-                        "filename": img_filename,
-                        "rect": img_rect,
-                        "size": pil_img.size
-                    })
+                    if pix.n - pix.alpha < 4:  # GRAY or RGB
+                        # Convert to PIL Image
+                        img_data = pix.tobytes("ppm")
+                        pil_img = Image.open(io.BytesIO(img_data))
+                        
+                        # Save image temporarily
+                        img_filename = f"image_{self.image_counter}.png"
+                        img_path = os.path.join(self.temp_dir, img_filename)
+                        pil_img.save(img_path, "PNG")
+                        
+                        extracted_images.append({
+                            "path": img_path,
+                            "filename": img_filename,
+                            "rect": None,
+                            "size": pil_img.size
+                        })
+                        
+                        self.image_counter += 1
+                        pil_img.close()  # Close PIL image
                     
-                    self.image_counter += 1
-                
-                pix = None  # Free memory
-                
-            except Exception as e:
-                print(f"Error extracting image {img_index}: {e}")
-                continue
-                
+                    # Free pixmap memory
+                    if pix:
+                        pix = None
+                    
+                except Exception as e:
+                    print(f"Error extracting image {img_index}: {e}")
+                    continue
+                    
+        except Exception as e:
+            print(f"Error in image extraction: {e}")
+            
         return extracted_images
     
     def detect_tables(self, page: fitz.Page) -> List[Dict]:
@@ -221,59 +232,122 @@ class AdvancedPDFConverter:
     
     def convert_pdf_to_word(self, pdf_path: str, output_path: str) -> Dict[str, Any]:
         """Convert PDF to Word with advanced formatting preservation"""
+        pdf_doc = None
         try:
-            # Open PDF
-            pdf_doc = fitz.open(pdf_path)
+            # Validate input file
+            if not os.path.exists(pdf_path):
+                return {
+                    "success": False,
+                    "error": "Input PDF file not found"
+                }
+            
+            # Open PDF with error handling
+            try:
+                pdf_doc = fitz.open(pdf_path)
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"Failed to open PDF: {str(e)}"
+                }
+            
+            # Check if PDF is valid and not empty
+            if pdf_doc.page_count == 0:
+                pdf_doc.close()
+                return {
+                    "success": False,
+                    "error": "PDF file is empty or corrupted"
+                }
             
             # Create Word document
             word_doc = Document()
+            pages_processed = 0
             
-            # Process each page
-            for page_num in range(len(pdf_doc)):
-                page = pdf_doc[page_num]
-                
-                # Add page break if not first page
-                if page_num > 0:
-                    word_doc.add_page_break()
-                
-                # Extract formatted text
-                formatted_blocks = self.extract_text_with_formatting(page)
-                
-                # Extract images
-                images = self.extract_images(page, word_doc)
-                
-                # Detect tables
-                tables = self.detect_tables(page)
-                
-                # Add content to Word document in order
-                # First add text blocks
-                self.add_text_to_doc(word_doc, formatted_blocks)
-                
-                # Then add images
-                if images:
-                    self.add_images_to_doc(word_doc, images)
-                
-                # Finally add tables
-                if tables:
-                    self.add_tables_to_doc(word_doc, tables)
+            # Process each page with individual error handling
+            for page_num in range(pdf_doc.page_count):
+                try:
+                    page = pdf_doc[page_num]
+                    
+                    # Add page break if not first page
+                    if page_num > 0:
+                        word_doc.add_page_break()
+                    
+                    # Extract text with basic method if advanced fails
+                    try:
+                        formatted_blocks = self.extract_text_with_formatting(page)
+                        self.add_text_to_doc(word_doc, formatted_blocks)
+                    except Exception as e:
+                        print(f"Advanced text extraction failed for page {page_num + 1}, using basic method: {e}")
+                        # Fallback to basic text extraction
+                        text = page.get_text()
+                        if text.strip():
+                            p = word_doc.add_paragraph(text)
+                    
+                    # Extract images with error handling
+                    try:
+                        images = self.extract_images(page, word_doc)
+                        if images:
+                            self.add_images_to_doc(word_doc, images)
+                    except Exception as e:
+                        print(f"Image extraction failed for page {page_num + 1}: {e}")
+                    
+                    # Detect tables with error handling
+                    try:
+                        tables = self.detect_tables(page)
+                        if tables:
+                            self.add_tables_to_doc(word_doc, tables)
+                    except Exception as e:
+                        print(f"Table detection failed for page {page_num + 1}: {e}")
+                    
+                    pages_processed += 1
+                    
+                except Exception as e:
+                    print(f"Error processing page {page_num + 1}: {e}")
+                    # Continue with next page
+                    continue
             
             # Save Word document
-            word_doc.save(output_path)
+            try:
+                word_doc.save(output_path)
+            except Exception as e:
+                if pdf_doc:
+                    pdf_doc.close()
+                return {
+                    "success": False,
+                    "error": f"Failed to save Word document: {str(e)}"
+                }
             
-            # Close PDF
-            pdf_doc.close()
+            # Close PDF safely
+            if pdf_doc:
+                pdf_doc.close()
             
             # Cleanup temp files
-            self._cleanup_temp_files()
+            try:
+                self._cleanup_temp_files()
+            except Exception as e:
+                print(f"Warning: Failed to cleanup temp files: {e}")
+            
+            # Verify output file was created
+            if not os.path.exists(output_path):
+                return {
+                    "success": False,
+                    "error": "Output file was not created successfully"
+                }
             
             return {
                 "success": True,
                 "message": "PDF converted to Word successfully",
-                "pages_processed": len(pdf_doc),
+                "pages_processed": pages_processed,
                 "output_file": output_path
             }
             
         except Exception as e:
+            # Ensure PDF is closed on any error
+            if pdf_doc:
+                try:
+                    pdf_doc.close()
+                except:
+                    pass
+            
             return {
                 "success": False,
                 "error": f"Conversion failed: {str(e)}"
