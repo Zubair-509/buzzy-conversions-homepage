@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
   },
   // Configure for different deployment environments
   async rewrites() {
-    const apiUrl = process.env.PYTHON_API_URL || 'http://127.0.0.1:8001';
+    const apiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
     return [
       {
         source: '/python-api/:path*',

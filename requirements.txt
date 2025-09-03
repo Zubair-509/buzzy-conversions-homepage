@@ -8,3 +8,14 @@ email_validator
 flask-sqlalchemy
 gunicorn
 psycopg2-binary
+email_validator
+flask
+flask-sqlalchemy
+gunicorn
+psycopg2-binary
+flask
+flask-cors
+pdf2docx
+python-docx
+requests
+werkzeug
