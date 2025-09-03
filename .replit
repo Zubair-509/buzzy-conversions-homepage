@@ -6,7 +6,7 @@ channel = "stable-25_05"
 packages = ["imagemagickBig", "openssl", "postgresql"]
 
 [deployment]
-run = ["bash", "-c", "npm start & python api/pdf_converter.py"]
+run = ["npm", "start"]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 
@@ -32,7 +32,7 @@ externalPort = 3000
 
 [[ports]]
 localPort = 5000
-externalPort = 80
+externalPort = 5000
 
 [[ports]]
 localPort = 8000
@@ -66,10 +66,6 @@ author = "agent"
 task = "workflow.run"
 args = "Frontend"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Backend API"
-
 [[workflows.workflow]]
 name = "Frontend"
 author = "agent"
@@ -81,15 +77,3 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
-
-[[workflows.workflow]]
-name = "Backend API"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python api/pdf_converter.py"
-waitForPort = 8000

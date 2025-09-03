@@ -31,16 +31,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // Configure for different deployment environments
-  async rewrites() {
-    const apiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
-    return [
-      {
-        source: '/python-api/:path*',
-        destination: `${apiUrl}/api/:path*`,
-      },
-    ];
-  },
   turbopack: {
     rules: {
       "*.{jsx,tsx}": {
