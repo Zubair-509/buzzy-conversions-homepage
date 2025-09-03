@@ -24,13 +24,8 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    // App Router doesn't have router.events, so we'll handle loading differently
-    const handleRouteChange = () => {
-      setIsLoading(false);
-    };
-
-    // Listen for pathname changes to stop loading
-    handleRouteChange();
+    // Reset loading state when pathname changes
+    setIsLoading(false);
   }, [pathname]);
 
 
