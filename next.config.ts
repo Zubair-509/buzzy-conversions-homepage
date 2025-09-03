@@ -21,16 +21,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
 
-  experimental: {
-    optimizePackageImports: [
-      'lucide-react',
-      'framer-motion',
-      '@radix-ui/react-accordion',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-tabs',
-    ],
-  },
+  
   async headers() {
     return [
       {
