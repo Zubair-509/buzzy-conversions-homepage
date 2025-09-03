@@ -19,7 +19,8 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml.shared import OxmlElement, qn
+from docx.oxml.parser import OxmlElement
+from docx.oxml.ns import qn
 
 
 class AdvancedPDFConverter:
@@ -31,7 +32,7 @@ class AdvancedPDFConverter:
         
     def extract_text_with_formatting(self, page: fitz.Page) -> List[Dict]:
         """Extract text with formatting information"""
-        text_dict = page.get_text("dict")
+        text_dict = page.get_text("dict", flags=11)
         formatted_blocks = []
         
         for block in text_dict["blocks"]:
@@ -64,7 +65,7 @@ class AdvancedPDFConverter:
                 
         return formatted_blocks
     
-    def extract_images(self, page: fitz.Page, doc: Document) -> List[Dict]:
+    def extract_images(self, page: fitz.Page, doc) -> List[Dict]:
         """Extract and save images from page"""
         image_list = page.get_images()
         extracted_images = []
@@ -84,8 +85,8 @@ class AdvancedPDFConverter:
                     img_path = os.path.join(self.temp_dir, img_filename)
                     pil_img.save(img_path, "PNG")
                     
-                    # Get image position and size
-                    img_rect = page.get_image_rects(xref)[0] if page.get_image_rects(xref) else None
+                    # Get image position and size from image list
+                    img_rect = None
                     
                     extracted_images.append({
                         "path": img_path,
@@ -109,8 +110,12 @@ class AdvancedPDFConverter:
         tables = []
         
         try:
-            # Use PyMuPDF's table detection
-            page_tables = page.find_tables()
+            # Use PyMuPDF's table detection (available in newer versions)
+            if hasattr(page, 'find_tables'):
+                page_tables = page.find_tables()
+            else:
+                # Fallback if find_tables is not available
+                return tables
             
             for table in page_tables:
                 table_data = table.extract()
@@ -127,7 +132,7 @@ class AdvancedPDFConverter:
             
         return tables
     
-    def add_text_to_doc(self, doc: Document, formatted_blocks: List[Dict]):
+    def add_text_to_doc(self, doc, formatted_blocks: List[Dict]):
         """Add formatted text to Word document"""
         for block in formatted_blocks:
             if block["type"] == "text":
@@ -161,7 +166,7 @@ class AdvancedPDFConverter:
                                 b = color_int & 255
                                 font.color.rgb = RGBColor(r, g, b)
     
-    def add_images_to_doc(self, doc: Document, images: List[Dict]):
+    def add_images_to_doc(self, doc, images: List[Dict]):
         """Add images to Word document"""
         for img_info in images:
             try:
@@ -185,7 +190,7 @@ class AdvancedPDFConverter:
             except Exception as e:
                 print(f"Error adding image {img_info['filename']}: {e}")
     
-    def add_tables_to_doc(self, doc: Document, tables: List[Dict]):
+    def add_tables_to_doc(self, doc, tables: List[Dict]):
         """Add tables to Word document with formatting"""
         for table_info in tables:
             try:

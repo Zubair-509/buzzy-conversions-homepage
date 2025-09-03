@@ -82,6 +82,10 @@ def convert_single_pdf():
             return jsonify({'error': 'No file provided'}), 400
         
         file = request.files['file']
+        
+        # Initialize variables to avoid unbound errors
+        pdf_path = None
+        docx_path = None
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
@@ -90,7 +94,7 @@ def convert_single_pdf():
         
         # Generate unique identifiers
         unique_id = str(uuid.uuid4())
-        original_filename = secure_filename(file.filename)
+        original_filename = secure_filename(file.filename or 'document.pdf')
         filename_without_ext = Path(original_filename).stem
         
         # Save uploaded file
@@ -138,10 +142,16 @@ def convert_single_pdf():
         print(traceback.format_exc())
         
         # Cleanup on error
-        if 'pdf_path' in locals() and Path(pdf_path).exists():
-            cleanup_file(str(pdf_path), delay=1)
-        if 'docx_path' in locals() and Path(docx_path).exists():
-            cleanup_file(str(docx_path), delay=1)
+        try:
+            if 'pdf_path' in locals() and pdf_path and Path(pdf_path).exists():
+                cleanup_file(str(pdf_path), delay=1)
+        except:
+            pass
+        try:
+            if 'docx_path' in locals() and docx_path and Path(docx_path).exists():
+                cleanup_file(str(docx_path), delay=1)
+        except:
+            pass
             
         return jsonify({'error': f'Server error during conversion: {str(e)}'}), 500
 

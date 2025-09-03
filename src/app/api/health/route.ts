@@ -4,10 +4,15 @@ export async function GET() {
   try {
     // Check if Python backend is reachable
     const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(`${pythonApiUrl}/api/health`, {
       method: 'GET',
-      timeout: 5000, // 5 second timeout
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
     
     if (response.ok) {
       const backendHealth = await response.json();
