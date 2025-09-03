@@ -9,7 +9,7 @@ interface LoadingScreenProps {
 }
 
 export default function LoadingScreen({ 
-  message = "Loading...", 
+  message = "Loading page...", 
   progress 
 }: LoadingScreenProps) {
   const [dots, setDots] = useState('');

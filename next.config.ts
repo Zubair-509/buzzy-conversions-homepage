@@ -21,7 +21,6 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
 
-  
   async headers() {
     return [
       {
