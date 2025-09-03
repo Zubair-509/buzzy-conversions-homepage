@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -37,38 +36,25 @@ export default function PageLoader() {
 
     window.addEventListener('popstate', handlePopState);
 
-    // Override Link clicks to trigger loading
-    const handleLinkClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const link = target.closest('a');
-      
-      if (link && link.href && !link.href.startsWith('#') && !link.href.includes('mailto:') && !link.href.includes('tel:')) {
-        // Check if it's an internal link
-        const url = new URL(link.href);
-        const currentUrl = new URL(window.location.href);
-        
-        if (url.hostname === currentUrl.hostname && url.pathname !== currentUrl.pathname) {
-          setLoading(true);
-        }
-      }
-    };
-
-    document.addEventListener('click', handleLinkClick);
-
     return () => {
       window.removeEventListener('navigation-start', handleNavigationStart);
       window.removeEventListener('navigation-end', handleNavigationEnd);
       window.removeEventListener('popstate', handlePopState);
-      document.removeEventListener('click', handleLinkClick);
     };
   }, []);
 
   return (
     <AnimatePresence mode="wait">
       {loading && (
-        <LoadingScreen 
-          message="Navigating to page" 
-        />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50"
+        >
+          <LoadingScreen />
+        </motion.div>
       )}
     </AnimatePresence>
   );
