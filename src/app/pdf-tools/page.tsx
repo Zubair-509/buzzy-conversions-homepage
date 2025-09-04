@@ -110,6 +110,12 @@ const StepCard: React.FC<{ number: string; title: string; description: string; i
 export default function PDFToolsPage() {
   const pdfConversionTools = [
     {
+      icon: <FileText className="w-6 h-6 text-primary" />,
+      title: "PDF to Word",
+      description: "Convert PDFs into editable Word documents",
+      href: "/tools/pdf-to-word"
+    },
+    {
       icon: <Presentation className="w-6 h-6 text-primary" />,
       title: "PDF to PowerPoint",
       description: "Transform PDFs into editable PowerPoint presentations",
