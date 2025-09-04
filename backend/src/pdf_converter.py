@@ -68,13 +68,16 @@ class EnhancedPDFConverter:
             return "digital"  # Default assumption
     
     def convert_fast_mode(self, pdf_path: str, output_path: str) -> Dict[str, Any]:
-        """Fast conversion using pdf2docx - prioritizes speed"""
+        """Fast conversion using pdf2docx with bullet point enhancement"""
         try:
             logger.info("Using Fast mode (pdf2docx)")
             
             cv = Converter(pdf_path)
             cv.convert(output_path)
             cv.close()
+            
+            # Post-process the document to enhance bullet points
+            self._enhance_fast_mode_bullets(output_path)
             
             # Get page count for reporting
             pdf_doc = fitz.open(pdf_path)
@@ -83,7 +86,7 @@ class EnhancedPDFConverter:
             
             return {
                 "success": True,
-                "message": "PDF converted using Fast mode (pdf2docx)",
+                "message": "PDF converted using Fast mode (pdf2docx) with bullet enhancement",
                 "pages_processed": pages_processed,
                 "mode": "fast",
                 "output_file": output_path
@@ -183,13 +186,12 @@ class EnhancedPDFConverter:
                     if page_num > 0:
                         word_doc.add_page_break()
                     
-                    # Perform OCR
-                    ocr_text = pytesseract.image_to_string(image, config='--psm 1 --oem 3')
+                    # Perform OCR with better configuration
+                    ocr_text = pytesseract.image_to_string(image, config='--psm 1 --oem 3 -c preserve_interword_spaces=1')
                     
                     if ocr_text.strip():
-                        # Add OCR text to document
-                        paragraph = word_doc.add_paragraph()
-                        paragraph.add_run(ocr_text.strip())
+                        # Add OCR text with bullet point detection
+                        self._add_text_with_bullets(word_doc, ocr_text.strip())
                     else:
                         # If no text found, add a note
                         paragraph = word_doc.add_paragraph()
@@ -262,11 +264,13 @@ class EnhancedPDFConverter:
                         page = pdf_doc[page_num]
                         text = page.get_text()
                         if text.strip():
-                            # Add text below image
-                            text_paragraph = word_doc.add_paragraph()
-                            text_run = text_paragraph.add_run(f"\n[Extracted Text from Page {page_num + 1}]:\n{text.strip()}")
-                            text_run.font.size = Pt(8)
-                            text_run.font.italic = True
+                            # Add text below image with bullet point detection
+                            word_doc.add_paragraph()  # Add spacing
+                            header_paragraph = word_doc.add_paragraph()
+                            header_run = header_paragraph.add_run(f"[Extracted Text from Page {page_num + 1}]:")
+                            header_run.font.size = Pt(8)
+                            header_run.font.italic = True
+                            self._add_text_with_bullets(word_doc, text.strip())
                     
                     pages_processed += 1
                     
@@ -382,47 +386,71 @@ class EnhancedPDFConverter:
             }
     
     def _extract_formatted_text(self, page: fitz.Page, word_doc: Document):
-        """Extract text with formatting for accurate mode"""
+        """Extract text with formatting for accurate mode with enhanced bullet point support"""
         try:
             text_dict = page.get_text("dict", flags=11)
             
             for block in text_dict["blocks"]:
                 if "lines" in block:  # Text block
-                    paragraph = word_doc.add_paragraph()
-                    
+                    # Process lines to detect bullet points and structure
+                    lines_text = []
                     for line in block["lines"]:
+                        line_text = ""
+                        line_spans = []
                         for span in line["spans"]:
                             if span["text"].strip():
-                                run = paragraph.add_run(span["text"])
-                                
-                                # Apply formatting
-                                font = run.font
-                                font.size = Pt(max(8, min(24, span["size"])))  # Reasonable font size limits
-                                font.name = span["font"] if span["font"] else "Calibri"
-                                
-                                # Handle formatting flags
-                                if span["flags"] & 2**4:  # Bold
-                                    font.bold = True
-                                if span["flags"] & 2**1:  # Italic
-                                    font.italic = True
-                                    
-                                # Apply color if not black
-                                if span["color"] != 0:
-                                    color_int = span["color"]
-                                    r = (color_int >> 16) & 255
-                                    g = (color_int >> 8) & 255
-                                    b = color_int & 255
-                                    font.color.rgb = RGBColor(r, g, b)
+                                line_text += span["text"]
+                                line_spans.append(span)
+                        if line_text.strip():
+                            lines_text.append((line_text.strip(), line_spans))
+                    
+                    # Process each line with bullet point detection
+                    for line_text, line_spans in lines_text:
+                        is_bullet = self._is_bullet_point(line_text)
                         
-                        # Add line break
-                        paragraph.add_run("\n")
+                        if is_bullet:
+                            # Create bullet point paragraph
+                            paragraph = word_doc.add_paragraph(style='List Bullet')
+                            # Remove bullet characters from text
+                            clean_text = self._clean_bullet_text(line_text)
+                        else:
+                            # Regular paragraph
+                            paragraph = word_doc.add_paragraph()
+                            clean_text = line_text
+                        
+                        # Add text with original formatting
+                        for span in line_spans:
+                            if span["text"].strip():
+                                # For bullet points, clean the text
+                                span_text = self._clean_bullet_text(span["text"]) if is_bullet else span["text"]
+                                if span_text.strip():
+                                    run = paragraph.add_run(span_text)
+                                    
+                                    # Apply formatting
+                                    font = run.font
+                                    font.size = Pt(max(8, min(24, span["size"])))  # Reasonable font size limits
+                                    font.name = span["font"] if span["font"] else "Calibri"
+                                    
+                                    # Handle formatting flags
+                                    if span["flags"] & 2**4:  # Bold
+                                        font.bold = True
+                                    if span["flags"] & 2**1:  # Italic
+                                        font.italic = True
+                                        
+                                    # Apply color if not black
+                                    if span["color"] != 0:
+                                        color_int = span["color"]
+                                        r = (color_int >> 16) & 255
+                                        g = (color_int >> 8) & 255
+                                        b = color_int & 255
+                                        font.color.rgb = RGBColor(r, g, b)
                         
         except Exception as e:
             logger.warning(f"Error extracting formatted text: {e}")
-            # Fallback to basic text extraction
+            # Fallback to basic text extraction with bullet point detection
             text = page.get_text()
             if text.strip():
-                word_doc.add_paragraph(text)
+                self._add_text_with_bullets(word_doc, text)
     
     def _extract_images_accurate(self, page: fitz.Page, word_doc: Document, pdf_doc):
         """Extract images for accurate mode"""
@@ -509,6 +537,110 @@ class EnhancedPDFConverter:
                             
         except Exception as e:
             logger.warning(f"Error extracting tables: {e}")
+    
+    def _is_bullet_point(self, text: str) -> bool:
+        """Detect if a line is a bullet point"""
+        text = text.strip()
+        if not text:
+            return False
+        
+        # Common bullet point patterns
+        bullet_patterns = [
+            '•', '◦', '▪', '▫', '‣', '⁃',  # Unicode bullets
+            '■', '□', '▲', '△', '●', '○',  # Geometric shapes
+            '*', '-', '+',  # ASCII bullets
+            '→', '➤', '►', '▶'  # Arrow bullets
+        ]
+        
+        # Check if line starts with bullet character
+        first_char = text[0]
+        if first_char in bullet_patterns:
+            return True
+        
+        # Check for numbered lists (1., 2., a., etc.)
+        import re
+        if re.match(r'^\d+[.):]\s+', text) or re.match(r'^[a-zA-Z][.):]\s+', text):
+            return True
+        
+        # Check for indented text that might be a bullet
+        if text.startswith('  ') or text.startswith('\t'):
+            # Look for bullet-like patterns after whitespace
+            stripped = text.lstrip()
+            if stripped and stripped[0] in bullet_patterns:
+                return True
+        
+        return False
+    
+    def _clean_bullet_text(self, text: str) -> str:
+        """Remove bullet characters and clean bullet point text"""
+        import re
+        text = text.strip()
+        
+        # Remove common bullet characters from the beginning
+        bullet_chars = ['•', '◦', '▪', '▫', '‣', '⁃', '■', '□', '▲', '△', '●', '○', '*', '-', '+', '→', '➤', '►', '▶']
+        
+        # Remove leading bullets
+        if text and text[0] in bullet_chars:
+            text = text[1:].strip()
+        
+        # Remove numbered list markers (1., 2., a., etc.)
+        text = re.sub(r'^\d+[.):]\s*', '', text)
+        text = re.sub(r'^[a-zA-Z][.):]\s*', '', text)
+        
+        # Remove extra whitespace
+        text = text.strip()
+        
+        return text
+    
+    def _add_text_with_bullets(self, word_doc: Document, text: str):
+        """Add text to document with bullet point detection"""
+        lines = text.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            if self._is_bullet_point(line):
+                # Create bullet point
+                paragraph = word_doc.add_paragraph(style='List Bullet')
+                clean_text = self._clean_bullet_text(line)
+                paragraph.add_run(clean_text)
+            else:
+                # Regular paragraph
+                paragraph = word_doc.add_paragraph()
+                paragraph.add_run(line)
+    
+    def _enhance_fast_mode_bullets(self, docx_path: str):
+        """Post-process Fast mode output to enhance bullet point formatting"""
+        try:
+            # Open the document created by pdf2docx
+            doc = Document(docx_path)
+            
+            # Process each paragraph to detect and fix bullet points
+            paragraphs_to_modify = []
+            
+            for i, paragraph in enumerate(doc.paragraphs):
+                text = paragraph.text.strip()
+                if text and self._is_bullet_point(text):
+                    # Store paragraph info for modification
+                    clean_text = self._clean_bullet_text(text)
+                    paragraphs_to_modify.append((i, clean_text, paragraph))
+            
+            # Apply bullet formatting to detected bullet points
+            for i, clean_text, paragraph in paragraphs_to_modify:
+                # Clear existing content
+                paragraph.clear()
+                # Apply bullet style and add cleaned text
+                paragraph.style = 'List Bullet'
+                paragraph.add_run(clean_text)
+            
+            # Save the enhanced document
+            doc.save(docx_path)
+            
+        except Exception as e:
+            logger.warning(f"Error enhancing Fast mode bullets: {e}")
+            # If enhancement fails, the original document remains
     
     def _cleanup_temp_files(self):
         """Clean up temporary files"""

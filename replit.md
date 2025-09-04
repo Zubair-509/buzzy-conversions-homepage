@@ -6,6 +6,19 @@ This is a file conversion and optimization platform built with Next.js 14+. The 
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes
+
+**September 4, 2025** - Enhanced PDF to Word Conversion System:
+- Fixed Hybrid mode by installing proper poppler-utils system dependencies
+- Implemented comprehensive bullet point detection and formatting across all conversion modes
+- Added intelligent bullet point recognition for various Unicode and ASCII bullet characters (•, ▪, *, -, →, etc.)
+- Enhanced OCR mode with better text spacing preservation
+- Improved Fast mode with post-processing bullet point enhancement
+- Added automatic numbered list detection (1., 2., a., etc.)
+- Implemented proper Word document bullet styling instead of raw bullet characters
+- Enhanced text structure preservation and paragraph formatting
+- All four conversion modes (Auto, Fast, Accurate, Hybrid) now properly handle bullet points and formatting
+
 # System Architecture
 
 ## Frontend Architecture
