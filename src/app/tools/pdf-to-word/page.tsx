@@ -15,7 +15,7 @@ export default function PDFToWordPage() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [conversionMode, setConversionMode] = useState<'standard' | 'fast' | 'accurate' | 'hybrid'>('standard');
+  const [conversionMode, setConversionMode] = useState<'auto' | 'fast' | 'accurate' | 'hybrid'>('auto');
   const [conversionMethod, setConversionMethod] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -180,7 +180,7 @@ export default function PDFToWordPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
                       {
-                        mode: 'standard' as const,
+                        mode: 'auto' as const,
                         title: 'Auto (Recommended)',
                         description: 'Automatically detects PDF type and uses the best method',
                         icon: <Settings className="w-5 h-5" />

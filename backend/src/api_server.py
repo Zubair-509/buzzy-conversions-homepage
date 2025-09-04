@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
-from pdf_converter import convert_pdf_to_word_advanced
+from pdf_converter import convert_pdf_to_word_enhanced, convert_pdf_to_word_advanced
 
 app = Flask(__name__)
 CORS(app, origins=["*"], allow_headers=["*"], methods=["*"])
@@ -60,16 +60,26 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'service': 'Advanced PDF to Word Converter',
-        'version': '2.0',
+        'service': 'Enhanced PDF to Word Converter',
+        'version': '3.0',
         'features': [
+            'Multiple conversion modes (Auto, Fast, Accurate, Hybrid)',
+            'Auto-detection of scanned vs digital PDFs',
+            'OCR support for scanned documents',
             'High-quality PDF to Word conversion',
             'Image preservation and embedding',
             'Table detection and conversion',
             'Font and formatting preservation',
             'Complex layout handling',
             'Fast processing with PyMuPDF'
-        ]
+        ],
+        'conversion_modes': {
+            'auto': 'Automatically chooses the best method',
+            'fast': 'Quick conversion using pdf2docx',
+            'accurate': 'Best formatting preservation using PyMuPDF',
+            'hybrid': 'Page images with overlaid text',
+            'ocr': 'OCR for scanned PDFs'
+        }
     })
 
 
@@ -82,6 +92,16 @@ def convert_single_pdf():
             return jsonify({'error': 'No file provided'}), 400
         
         file = request.files['file']
+        
+        # Get conversion mode from form data (default to 'auto')
+        mode = request.form.get('mode', 'auto').lower().strip()
+        
+        # Validate mode
+        valid_modes = ['auto', 'fast', 'accurate', 'hybrid', 'ocr']
+        if mode not in valid_modes:
+            return jsonify({
+                'error': f'Invalid conversion mode: {mode}. Valid modes are: {", ".join(valid_modes)}'
+            }), 400
         
         # Initialize variables to avoid unbound errors
         pdf_path = None
@@ -106,10 +126,10 @@ def convert_single_pdf():
         docx_filename = f"{filename_without_ext}_{unique_id}.docx"
         docx_path = output_dir / docx_filename
         
-        print(f"Converting {pdf_path} to {docx_path}")
+        print(f"Converting {pdf_path} to {docx_path} using {mode} mode")
         
-        # Perform conversion
-        conversion_result = convert_pdf_to_word_advanced(str(pdf_path), str(docx_path))
+        # Perform conversion with selected mode
+        conversion_result = convert_pdf_to_word_enhanced(str(pdf_path), str(docx_path), mode)
         
         # Schedule cleanup of input file
         cleanup_file(str(pdf_path), delay=5)
@@ -128,13 +148,16 @@ def convert_single_pdf():
         
         return jsonify({
             'success': True,
-            'message': 'PDF converted to Word successfully with advanced formatting preservation',
+            'message': conversion_result.get('message', 'PDF converted to Word successfully'),
             'download_id': unique_id,
             'filename': docx_filename,
             'original_filename': original_filename,
             'file_size': file_size,
             'pages_processed': conversion_result.get('pages_processed', 0),
-            'conversion_method': 'Advanced PyMuPDF + python-docx'
+            'conversion_mode': mode,
+            'conversion_method': conversion_result.get('mode', mode),
+            'auto_choice': conversion_result.get('auto_choice'),
+            'pdf_type': conversion_result.get('pdf_type')
         })
         
     except Exception as e:
@@ -165,6 +188,16 @@ def convert_batch_pdfs():
         if not files:
             return jsonify({'error': 'No files provided'}), 400
         
+        # Get conversion mode from form data (default to 'auto')
+        mode = request.form.get('mode', 'auto').lower().strip()
+        
+        # Validate mode
+        valid_modes = ['auto', 'fast', 'accurate', 'hybrid', 'ocr']
+        if mode not in valid_modes:
+            return jsonify({
+                'error': f'Invalid conversion mode: {mode}. Valid modes are: {", ".join(valid_modes)}'
+            }), 400
+        
         results = []
         successful_conversions = 0
         
@@ -185,8 +218,8 @@ def convert_batch_pdfs():
                     docx_filename = f"{filename_without_ext}_{unique_id}.docx"
                     docx_path = output_dir / docx_filename
                     
-                    # Perform conversion
-                    conversion_result = convert_pdf_to_word_advanced(str(pdf_path), str(docx_path))
+                    # Perform conversion with selected mode
+                    conversion_result = convert_pdf_to_word_enhanced(str(pdf_path), str(docx_path), mode)
                     
                     # Schedule cleanup of input file
                     cleanup_file(str(pdf_path), delay=5)
@@ -199,7 +232,11 @@ def convert_batch_pdfs():
                             'download_id': unique_id,
                             'success': True,
                             'file_size': docx_path.stat().st_size,
-                            'pages_processed': conversion_result.get('pages_processed', 0)
+                            'pages_processed': conversion_result.get('pages_processed', 0),
+                            'conversion_mode': mode,
+                            'conversion_method': conversion_result.get('mode', mode),
+                            'auto_choice': conversion_result.get('auto_choice'),
+                            'pdf_type': conversion_result.get('pdf_type')
                         })
                     else:
                         results.append({
