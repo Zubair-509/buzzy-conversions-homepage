@@ -6,7 +6,7 @@ export async function GET(
 ) {
   try {
     const { conversionId } = await params;
-    
+
     if (!conversionId) {
       return NextResponse.json(
         { error: 'Conversion ID is required' },
@@ -16,7 +16,7 @@ export async function GET(
 
     // Forward to Python backend
     const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
-    
+
     const response = await fetch(`${pythonApiUrl}/api/status/${conversionId}`, {
       method: 'GET',
     });
@@ -28,7 +28,7 @@ export async function GET(
           { status: 404 }
         );
       }
-      
+
       const errorText = await response.text();
       console.error('Backend status error:', errorText);
       return NextResponse.json(
@@ -42,7 +42,7 @@ export async function GET(
 
   } catch (error) {
     console.error('API status proxy error:', error);
-    
+
     // Check if it's a connection error
     if (error instanceof Error && error.message.includes('ECONNREFUSED')) {
       return NextResponse.json(
@@ -50,7 +50,7 @@ export async function GET(
         { status: 503 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error during status check' },
       { status: 500 }

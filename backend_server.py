@@ -117,8 +117,16 @@ class APIHandler(BaseHTTPRequestHandler):
             with open(file_path, 'rb') as f:
                 content = f.read()
             
+            # Determine content type based on file extension
+            if filename.endswith('.pptx'):
+                content_type = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            elif filename.endswith('.docx'):
+                content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            else:
+                content_type = 'application/octet-stream'
+            
             self.send_response(200)
-            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            self.send_header('Content-Type', content_type)
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
             self.send_header('Content-Length', str(len(content)))
             self.send_header('Access-Control-Allow-Origin', '*')
