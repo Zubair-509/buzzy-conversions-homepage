@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "python-3.11", "web"]
+modules = ["nodejs-20", "web", "python-3.11"]
 run = "npm run dev"
 
 [nix]
@@ -6,8 +6,8 @@ channel = "stable-25_05"
 packages = ["freetype", "gumbo", "harfbuzz", "imagemagickBig", "jbig2dec", "lcms2", "libGL", "libGLU", "libimagequant", "libjpeg", "libjpeg_turbo", "libtiff", "libwebp", "libxcrypt", "mupdf", "openjpeg", "openssl", "poppler_utils", "postgresql", "swig", "tcl", "tesseract", "tk", "xcbuild", "zlib"]
 
 [deployment]
-run = ["bash", "-c", "cd backend/src && python api_server.py &amp; npm run start"]
-deploymentTarget = "vm"
+run = ["npm", "run", "start"]
+deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 
 [[ports]]
@@ -32,11 +32,7 @@ externalPort = 3000
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 8000
-externalPort = 8000
+externalPort = 80
 
 [agent]
 expertMode = true
@@ -70,10 +66,10 @@ args = "Frontend"
 name = "Frontend"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
