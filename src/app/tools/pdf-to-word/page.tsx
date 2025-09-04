@@ -72,9 +72,8 @@ export default function PDFToWordPage() {
         const formData = new FormData();
         formData.append('file', file.file);
 
-        // Send to backend conversion API
-        const pythonApiUrl = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
-        const response = await fetch(`${pythonApiUrl}/api/convert/pdf-to-word`, {
+        // Send to backend conversion API through Next.js proxy
+        const response = await fetch('/api/convert/pdf-to-word', {
           method: 'POST',
           body: formData,
         });
@@ -94,7 +93,7 @@ export default function PDFToWordPage() {
           
           const pollStatus = async () => {
             try {
-              const statusResponse = await fetch(`${pythonApiUrl}/api/status/${conversionId}`);
+              const statusResponse = await fetch(`/api/status/${conversionId}`);
               const statusData = await statusResponse.json();
               
               if (statusData.status === 'completed' && statusData.success) {
@@ -103,7 +102,7 @@ export default function PDFToWordPage() {
                     ...f, 
                     status: 'completed', 
                     progress: 100,
-                    downloadUrl: `${pythonApiUrl}${statusData.download_url}`
+                    downloadUrl: statusData.download_url
                   } : f
                 ));
               } else if (statusData.status === 'failed') {
