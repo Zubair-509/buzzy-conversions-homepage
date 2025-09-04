@@ -1,12 +1,25 @@
 #!/usr/bin/env python3
 """
-Simple Python backend server for health checks and basic API endpoints.
+Python backend server for PDF conversion and API endpoints.
 """
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import urllib.parse
+import os
+import tempfile
+import uuid
+import threading
+import shutil
 from datetime import datetime
+from urllib.parse import parse_qs
+import cgi
+import io
+from pdf_to_word_converter import convert_pdf_file
+
+# Global storage for conversion results
+conversion_storage = {}
+temp_dir = tempfile.mkdtemp()
 
 class APIHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -22,20 +35,67 @@ class APIHandler(BaseHTTPRequestHandler):
                 'status': 'healthy',
                 'service': 'python-backend',
                 'timestamp': datetime.now().isoformat(),
-                'version': '1.0.0'
+                'version': '2.0.0',
+                'features': ['pdf-to-word-conversion', 'advanced-formatting', 'image-preservation']
             }
             self.wfile.write(json.dumps(response).encode())
             
-        elif parsed_path.path.startswith('/api/download/'):
-            # Handle download requests with 404 since conversion is disabled
+        elif parsed_path.path.startswith('/api/status/'):
+            # Check conversion status
+            path_parts = parsed_path.path.split('/')
+            if len(path_parts) >= 4:
+                conversion_id = path_parts[3]
+                
+                if conversion_id in conversion_storage:
+                    result = conversion_storage[conversion_id]
+                    
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    
+                    status_response = {
+                        'conversion_id': conversion_id,
+                        'success': result.get('success', False),
+                        'status': 'completed' if result.get('success') else ('failed' if 'error' in result else 'processing'),
+                        'filename': result.get('filename'),
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') else None,
+                        'error': result.get('error'),
+                        'metadata': result.get('metadata', {})
+                    }
+                    self.wfile.write(json.dumps(status_response).encode())
+                    return
+                
+            # Conversion not found
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            response = {
-                'error': 'File conversion services are currently disabled'
-            }
+            response = {'error': 'Conversion not found'}
+            self.wfile.write(json.dumps(response).encode())
+            
+        elif parsed_path.path.startswith('/api/download/'):
+            # Extract download ID and filename from path
+            path_parts = parsed_path.path.split('/')
+            if len(path_parts) >= 4:
+                download_id = path_parts[3]
+                filename = path_parts[4] if len(path_parts) > 4 else None
+                
+                if download_id in conversion_storage:
+                    result = conversion_storage[download_id]
+                    if result.get('success') and os.path.exists(result.get('output_path', '')):
+                        # Serve the converted file
+                        self.serve_file(result['output_path'], result['filename'])
+                        return
+                
+            # File not found
+            self.send_response(404)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'error': 'File not found or has expired'}
             self.wfile.write(json.dumps(response).encode())
             
         else:
@@ -44,22 +104,168 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            response = {
-                'error': 'Endpoint not found'
-            }
+            response = {'error': 'Endpoint not found'}
+            self.wfile.write(json.dumps(response).encode())
+    
+    def serve_file(self, file_path, filename):
+        """Serve a file for download"""
+        try:
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('Content-Length', str(len(content)))
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(content)
+            
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'error': f'Failed to serve file: {str(e)}'}
             self.wfile.write(json.dumps(response).encode())
     
     def do_POST(self):
-        # Handle POST requests for conversion APIs
-        self.send_response(503)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
+        parsed_path = urllib.parse.urlparse(self.path)
         
-        response = {
-            'error': 'Conversion services are currently disabled'
-        }
-        self.wfile.write(json.dumps(response).encode())
+        if parsed_path.path == '/api/convert/pdf-to-word':
+            self.handle_pdf_to_word_conversion()
+        else:
+            # Handle other POST requests
+            self.send_response(503)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'error': 'This conversion service is not available'}
+            self.wfile.write(json.dumps(response).encode())
+    
+    def handle_pdf_to_word_conversion(self):
+        """Handle PDF to Word conversion requests"""
+        try:
+            # Parse multipart form data
+            content_type = self.headers.get('Content-Type', '')
+            if not content_type.startswith('multipart/form-data'):
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response = {'error': 'Content-Type must be multipart/form-data'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            # Get content length
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response = {'error': 'No file uploaded'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            # Read the request body
+            body = self.rfile.read(content_length)
+            
+            # Parse multipart data
+            boundary = content_type.split('boundary=')[1].encode()
+            parts = body.split(b'--' + boundary)
+            
+            pdf_file_content = None
+            pdf_filename = None
+            
+            for part in parts:
+                if b'Content-Disposition' in part and b'filename=' in part:
+                    # Extract filename
+                    lines = part.split(b'\r\n')
+                    for line in lines:
+                        if b'Content-Disposition' in line:
+                            if b'filename=' in line:
+                                filename_part = line.split(b'filename=')[1]
+                                pdf_filename = filename_part.strip(b'"').decode('utf-8')
+                                break
+                    
+                    # Extract file content
+                    if b'\r\n\r\n' in part:
+                        pdf_file_content = part.split(b'\r\n\r\n', 1)[1]
+                        # Remove trailing boundary markers
+                        if pdf_file_content.endswith(b'\r\n'):
+                            pdf_file_content = pdf_file_content[:-2]
+                        break
+            
+            if not pdf_file_content or not pdf_filename:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response = {'error': 'No valid PDF file found in request'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            # Generate unique ID for this conversion
+            conversion_id = str(uuid.uuid4())
+            
+            # Save uploaded PDF temporarily
+            pdf_temp_path = os.path.join(temp_dir, f"{conversion_id}_{pdf_filename}")
+            with open(pdf_temp_path, 'wb') as f:
+                f.write(pdf_file_content)
+            
+            # Start conversion in a background thread
+            def convert_async():
+                try:
+                    result = convert_pdf_file(pdf_temp_path, temp_dir)
+                    result['conversion_id'] = conversion_id
+                    conversion_storage[conversion_id] = result
+                    
+                    # Clean up input file
+                    if os.path.exists(pdf_temp_path):
+                        os.remove(pdf_temp_path)
+                        
+                except Exception as e:
+                    conversion_storage[conversion_id] = {
+                        'success': False,
+                        'error': f'Conversion failed: {str(e)}',
+                        'conversion_id': conversion_id
+                    }
+            
+            # Start background conversion
+            thread = threading.Thread(target=convert_async)
+            thread.daemon = True
+            thread.start()
+            
+            # Return immediate response with conversion ID
+            self.send_response(202)  # Accepted
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                'success': True,
+                'conversion_id': conversion_id,
+                'status': 'processing',
+                'message': 'PDF conversion started. Use the conversion ID to check status.'
+            }
+            self.wfile.write(json.dumps(response).encode())
+            
+        except Exception as e:
+            self.log_message(f"Error in PDF conversion: {str(e)}")
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'error': f'Internal server error: {str(e)}'}
+            self.wfile.write(json.dumps(response).encode())
     
     def do_OPTIONS(self):
         # Handle CORS preflight requests
@@ -80,8 +286,9 @@ def run_server(port=8000):
     print(f"Server ready and listening on port {port}")
     print("Available endpoints:")
     print("  GET /api/health - Health check endpoint")
-    print("  GET /api/download/* - File download (returns 404)")
-    print("  POST /* - All conversion endpoints (returns 503)")
+    print("  POST /api/convert/pdf-to-word - PDF to Word conversion")
+    print("  GET /api/status/{id} - Check conversion status")
+    print("  GET /api/download/{id}/{filename} - Download converted files")
     
     try:
         httpd.serve_forever()

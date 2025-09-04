@@ -61,38 +61,109 @@ export default function PDFToWordPage() {
   const convertFiles = async () => {
     setIsConverting(true);
     
-    // Simulate conversion process for each file
+    // Convert each file
     for (const file of uploadedFiles.filter(f => f.status === 'pending')) {
       setUploadedFiles(prev => prev.map(f => 
         f.id === file.id ? { ...f, status: 'converting', progress: 0 } : f
       ));
 
-      // Simulate progress
-      for (let progress = 0; progress <= 100; progress += 10) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setUploadedFiles(prev => prev.map(f => 
-          f.id === file.id ? { ...f, progress } : f
-        ));
-      }
+      try {
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('file', file.file);
 
-      // Simulate conversion result
-      const success = Math.random() > 0.2; // 80% success rate for demo
-      
-      if (success) {
-        setUploadedFiles(prev => prev.map(f => 
-          f.id === file.id ? { 
-            ...f, 
-            status: 'completed', 
-            progress: 100,
-            downloadUrl: `/api/download/demo/${file.file.name.replace('.pdf', '.docx')}`
-          } : f
-        ));
-      } else {
+        // Send to backend conversion API
+        const pythonApiUrl = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${pythonApiUrl}/api/convert/pdf-to-word`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+          const conversionId = result.conversion_id;
+          
+          // Poll for conversion status
+          let attempts = 0;
+          const maxAttempts = 60; // 60 seconds max
+          
+          const pollStatus = async () => {
+            try {
+              const statusResponse = await fetch(`${pythonApiUrl}/api/status/${conversionId}`);
+              const statusData = await statusResponse.json();
+              
+              if (statusData.status === 'completed' && statusData.success) {
+                setUploadedFiles(prev => prev.map(f => 
+                  f.id === file.id ? { 
+                    ...f, 
+                    status: 'completed', 
+                    progress: 100,
+                    downloadUrl: `${pythonApiUrl}${statusData.download_url}`
+                  } : f
+                ));
+              } else if (statusData.status === 'failed') {
+                setUploadedFiles(prev => prev.map(f => 
+                  f.id === file.id ? { 
+                    ...f, 
+                    status: 'error', 
+                    error: statusData.error || 'Conversion failed'
+                  } : f
+                ));
+              } else if (attempts < maxAttempts) {
+                // Still processing, update progress and continue polling
+                const progress = Math.min(90, (attempts / maxAttempts) * 80 + 10);
+                setUploadedFiles(prev => prev.map(f => 
+                  f.id === file.id ? { ...f, progress } : f
+                ));
+                
+                attempts++;
+                setTimeout(pollStatus, 1000); // Poll every second
+              } else {
+                // Timeout
+                setUploadedFiles(prev => prev.map(f => 
+                  f.id === file.id ? { 
+                    ...f, 
+                    status: 'error', 
+                    error: 'Conversion timeout. Please try again.'
+                  } : f
+                ));
+              }
+            } catch (error) {
+              setUploadedFiles(prev => prev.map(f => 
+                f.id === file.id ? { 
+                  ...f, 
+                  status: 'error', 
+                  error: 'Failed to check conversion status'
+                } : f
+              ));
+            }
+          };
+          
+          // Start polling
+          setTimeout(pollStatus, 1000);
+          
+        } else {
+          setUploadedFiles(prev => prev.map(f => 
+            f.id === file.id ? { 
+              ...f, 
+              status: 'error', 
+              error: result.error || 'Conversion failed'
+            } : f
+          ));
+        }
+        
+      } catch (error) {
+        console.error('Conversion error:', error);
         setUploadedFiles(prev => prev.map(f => 
           f.id === file.id ? { 
             ...f, 
             status: 'error', 
-            error: 'Conversion failed. Please try again.'
+            error: `Network error: ${error.message}`
           } : f
         ));
       }
