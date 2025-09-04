@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
 
+  // Allow all hosts for Replit proxy
+  async rewrites() {
+    return [];
+  },
+
   async headers() {
     return [
       {
@@ -30,10 +35,16 @@ const nextConfig: NextConfig = {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN',
           },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
         ],
       },
     ];
   },
+
+  // Note: Host allowance is handled by the dev script --hostname 0.0.0.0 flag
 };
 
 export default nextConfig;
