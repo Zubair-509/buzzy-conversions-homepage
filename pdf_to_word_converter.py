@@ -13,11 +13,12 @@ from typing import Dict, Any, Optional, Tuple
 import uuid
 
 try:
-    from pdf2docx import Converter
-    from pdf2docx.converter import parse
-except ImportError:
-    print("Warning: pdf2docx not available")
+    from pdf2docx import Converter, parse
+    print("pdf2docx successfully imported")
+except ImportError as e:
+    print(f"Warning: pdf2docx not available - {e}")
     Converter = None
+    parse = None
 
 try:
     import PyPDF2
@@ -123,18 +124,28 @@ class PDFToWordConverter:
     def _convert_with_pdf2docx(self, pdf_path: str, output_path: str) -> bool:
         """Convert using pdf2docx library (most advanced)"""
         try:
-            # Use pdf2docx converter with advanced settings
-            cv = Converter(pdf_path)
-            cv.convert(
-                output_path,
-                multi_processing=True,
-                cpu_count=2
+            # Use pdf2docx's parse function for better control
+            parse(
+                pdf_file=pdf_path,
+                docx_file=output_path,
+                start=0,  # Start from first page
+                end=None,  # Convert all pages
+                pages=None,  # Convert all pages
+                password=None,  # No password
+                debug=True
             )
-            cv.close()
             return True
         except Exception as e:
             print(f"pdf2docx conversion failed: {e}")
-            return False
+            # Try alternative pdf2docx method
+            try:
+                cv = Converter(pdf_path)
+                cv.convert(output_path)
+                cv.close()
+                return True
+            except Exception as e2:
+                print(f"Alternative pdf2docx method also failed: {e2}")
+                return False
     
     def _convert_with_fallback(self, pdf_path: str, output_path: str) -> bool:
         """Fallback conversion using pdfplumber + python-docx"""
@@ -147,22 +158,41 @@ class PDFToWordConverter:
                         # Add page break between pages
                         doc.add_page_break()
                     
-                    # Extract text with formatting
-                    text = page.extract_text()
-                    if text:
-                        # Add text to document
-                        paragraph = doc.add_paragraph(text)
-                        
-                    # Extract tables
+                    # Add page header
+                    if page_num == 0:
+                        header_para = doc.add_paragraph(f"Converted from PDF - Page {page_num + 1}")
+                        header_para.style = 'Heading 3'
+                    
+                    # Extract text with better formatting
+                    text = page.extract_text(layout=True, x_tolerance=3, y_tolerance=3)
+                    if text and text.strip():
+                        # Split text into paragraphs and add them
+                        paragraphs = text.split('\n\n')
+                        for para_text in paragraphs:
+                            if para_text.strip():
+                                para = doc.add_paragraph(para_text.strip())
+                                # Basic formatting based on text characteristics
+                                if len(para_text.strip()) < 100 and para_text.strip().isupper():
+                                    para.style = 'Heading 2'
+                                elif para_text.strip().endswith(':'):
+                                    para.style = 'Heading 3'
+                    
+                    # Extract and add tables with better formatting
                     tables = page.extract_tables()
                     if tables:
-                        for table in tables:
-                            self._add_table_to_doc(doc, table)
+                        for table_data in tables:
+                            if table_data:
+                                self._add_table_to_doc(doc, table_data)
                     
-                    # Note: Image extraction would need additional processing
-                    # For now, we'll add a placeholder for images
+                    # Handle images better
                     if hasattr(page, 'images') and page.images:
-                        doc.add_paragraph(f"[{len(page.images)} images found on page {page_num + 1}]")
+                        img_para = doc.add_paragraph(f"\n[Note: {len(page.images)} image(s) found on page {page_num + 1} - Image extraction requires advanced processing]\n")
+                        img_para.style = 'Intense Quote'
+            
+            # Add document properties
+            doc.core_properties.title = "PDF Conversion Result"
+            doc.core_properties.author = "PDF to Word Converter"
+            doc.core_properties.comments = "Converted using fallback method with pdfplumber + python-docx"
             
             doc.save(output_path)
             return True
