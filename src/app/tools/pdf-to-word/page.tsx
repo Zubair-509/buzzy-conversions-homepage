@@ -17,7 +17,8 @@ import {
   CheckCircle, 
   AlertCircle,
   FileIcon,
-  X
+  X,
+  RotateCcw
 } from 'lucide-react';
 
 interface UploadedFile {
@@ -33,6 +34,7 @@ export default function PDFToWordPage() {
   const router = useRouter();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isConverting, setIsConverting] = useState(false);
+  const [overallProgress, setOverallProgress] = useState(0);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadedFile[] = acceptedFiles.map((file, index) => ({
@@ -58,11 +60,20 @@ export default function PDFToWordPage() {
     setUploadedFiles(prev => prev.filter(f => f.id !== id));
   };
 
+  const changeFiles = () => {
+    setUploadedFiles([]);
+    setOverallProgress(0);
+  };
+
   const convertFiles = async () => {
     setIsConverting(true);
+    setOverallProgress(0);
+    
+    const pendingFiles = uploadedFiles.filter(f => f.status === 'pending');
+    let completedCount = 0;
     
     // Convert each file
-    for (const file of uploadedFiles.filter(f => f.status === 'pending')) {
+    for (const file of pendingFiles) {
       setUploadedFiles(prev => prev.map(f => 
         f.id === file.id ? { ...f, status: 'converting', progress: 0 } : f
       ));
@@ -97,6 +108,8 @@ export default function PDFToWordPage() {
               const statusData = await statusResponse.json();
               
               if (statusData.status === 'completed' && statusData.success) {
+                completedCount++;
+                setOverallProgress((completedCount / pendingFiles.length) * 100);
                 setUploadedFiles(prev => prev.map(f => 
                   f.id === file.id ? { 
                     ...f, 
@@ -274,6 +287,44 @@ export default function PDFToWordPage() {
                 </div>
               </div>
 
+              {/* Convert Button and Progress */}
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Button
+                      variant="outline"
+                      onClick={changeFiles}
+                      className="hover:bg-primary/10"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Change Files
+                    </Button>
+                    
+                    {uploadedFiles.filter(f => f.status === 'pending').length > 0 && (
+                      <Button
+                        onClick={convertFiles}
+                        disabled={isConverting}
+                        size="lg"
+                        className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 px-8"
+                      >
+                        {isConverting ? 'Converting...' : 'Convert to Word'}
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {/* Overall Progress Bar */}
+                  {isConverting && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Conversion Progress</span>
+                        <span className="text-primary font-medium">{Math.round(overallProgress)}%</span>
+                      </div>
+                      <Progress value={overallProgress} className="h-3" />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* File List */}
               {uploadedFiles.length > 0 && (
                 <div className="space-y-4">
@@ -336,29 +387,7 @@ export default function PDFToWordPage() {
                 </div>
               )}
 
-              {/* Convert Button */}
-              {uploadedFiles.filter(f => f.status === 'pending').length > 0 && (
-                <div className="flex justify-center pt-4">
-                  <Button
-                    onClick={convertFiles}
-                    disabled={isConverting}
-                    size="lg"
-                    className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 px-12"
-                  >
-                    {isConverting ? 'Converting...' : 'Convert to Word'}
-                  </Button>
-                </div>
-              )}
 
-              {/* Status Alert */}
-              {uploadedFiles.length > 0 && !isConverting && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Note: This is a demonstration version. In the full version, your files would be securely processed and converted to Word format.
-                  </AlertDescription>
-                </Alert>
-              )}
             </CardContent>
           </Card>
         </div>
