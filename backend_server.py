@@ -158,12 +158,12 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_pdf_to_excel_conversion()
         else:
             # Handle other POST requests
-            self.send_response(503)
+            self.send_response(404)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            response = {'error': 'This conversion service is not available'}
+            response = {'error': 'Endpoint not found'}
             self.wfile.write(json.dumps(response).encode())
     
     def handle_pdf_to_word_conversion(self):
