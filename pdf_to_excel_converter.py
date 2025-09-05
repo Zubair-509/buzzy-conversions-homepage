@@ -77,17 +77,10 @@ class PDFToExcelConverter:
         
     def convert_pdf_to_excel(self, pdf_path: str, output_filename: str = None) -> Dict[str, Any]:
         """
-        Convert PDF to Excel with advanced table detection and formatting preservation
-        
-        Args:
-            pdf_path: Path to the input PDF file
-            output_filename: Desired output filename (optional)
-            
-        Returns:
-            Dictionary with conversion results and metadata
+        Convert PDF to Excel with enhanced data extraction and multiple fallback methods
         """
         try:
-            print(f"Starting PDF to Excel conversion: {pdf_path}")
+            print(f"Starting enhanced PDF to Excel conversion: {pdf_path}")
             
             # Validate input file
             if not os.path.exists(pdf_path):
@@ -105,49 +98,30 @@ class PDFToExcelConverter:
                 
             output_path = os.path.join(self.output_dir, output_filename)
             
-            # Method 1: Try PyMuPDF enhanced extraction (best for images and complex layouts)
-            if self._convert_with_pymupdf_enhanced(pdf_path, output_path):
-                print("PyMuPDF enhanced conversion method succeeded")
-                return {
-                    "success": True, 
-                    "output_path": output_path,
-                    "filename": output_filename,
-                    "method": "pymupdf_enhanced",
-                    "message": "Conversion completed with tables, images, and formatting preservation"
-                }
+            # Try multiple conversion methods in order of effectiveness
+            methods = [
+                ("Enhanced Tabula extraction", self._convert_with_tabula_enhanced),
+                ("Camelot table extraction", self._convert_with_camelot),
+                ("PDFplumber advanced extraction", self._convert_with_pdfplumber_advanced),
+                ("PyMuPDF enhanced extraction", self._convert_with_pymupdf_enhanced),
+                ("Raw text extraction", self._convert_with_text_extraction)
+            ]
             
-            # Method 2: Try advanced table extraction (best for structured data)
-            if self._convert_with_advanced_table_extraction(pdf_path, output_path):
-                print("Advanced table extraction method succeeded")
-                return {
-                    "success": True, 
-                    "output_path": output_path,
-                    "filename": output_filename,
-                    "method": "advanced_table_extraction",
-                    "message": "Conversion completed with advanced table detection"
-                }
-            
-            # Method 3: Try pdfplumber extraction (good fallback)
-            if self._convert_with_pdfplumber(pdf_path, output_path):
-                print("PDFplumber extraction method succeeded")
-                return {
-                    "success": True, 
-                    "output_path": output_path,
-                    "filename": output_filename,
-                    "method": "pdfplumber_extraction",
-                    "message": "Conversion completed with text and basic table extraction"
-                }
-            
-            # Method 4: Basic text extraction (last resort)
-            if self._convert_with_basic_extraction(pdf_path, output_path):
-                print("Basic extraction method succeeded")
-                return {
-                    "success": True, 
-                    "output_path": output_path,
-                    "filename": output_filename,
-                    "method": "basic_extraction",
-                    "message": "Conversion completed with basic text extraction"
-                }
+            for method_name, method_func in methods:
+                try:
+                    print(f"Attempting {method_name}...")
+                    if method_func(pdf_path, output_path):
+                        print(f"{method_name} succeeded")
+                        return {
+                            "success": True, 
+                            "output_path": output_path,
+                            "filename": output_filename,
+                            "method": method_name.lower().replace(" ", "_"),
+                            "message": f"Conversion completed using {method_name}"
+                        }
+                except Exception as e:
+                    print(f"{method_name} failed: {e}")
+                    continue
             
             return {"success": False, "error": "All conversion methods failed"}
             
@@ -157,12 +131,319 @@ class PDFToExcelConverter:
             print(traceback.format_exc())
             return {"success": False, "error": error_msg}
     
+    def _convert_with_tabula_enhanced(self, pdf_path: str, output_path: str) -> bool:
+        """Enhanced conversion using tabula-py for table detection"""
+        try:
+            if not (tabula and openpyxl and pd):
+                return False
+            
+            print("Attempting tabula-py table extraction...")
+            wb = Workbook()
+            
+            # Remove default sheet
+            if wb.worksheets:
+                wb.remove(wb.active)
+            
+            # Read tables from all pages
+            try:
+                # Try different extraction methods
+                all_tables = []
+                
+                # Method 1: Standard tabula extraction
+                try:
+                    tables = tabula.read_pdf(pdf_path, pages='all', multiple_tables=True, pandas_options={'header': None})
+                    if tables:
+                        all_tables.extend([(table, f"Page_Auto_{i+1}") for i, table in enumerate(tables)])
+                        print(f"Found {len(tables)} tables using standard tabula")
+                except Exception as e:
+                    print(f"Standard tabula failed: {e}")
+                
+                # Method 2: Lattice method (for tables with clear borders)
+                try:
+                    tables = tabula.read_pdf(pdf_path, pages='all', lattice=True, multiple_tables=True, pandas_options={'header': None})
+                    if tables:
+                        all_tables.extend([(table, f"Lattice_{i+1}") for i, table in enumerate(tables)])
+                        print(f"Found {len(tables)} tables using lattice method")
+                except Exception as e:
+                    print(f"Lattice tabula failed: {e}")
+                
+                # Method 3: Stream method (for tables without clear borders)
+                try:
+                    tables = tabula.read_pdf(pdf_path, pages='all', stream=True, multiple_tables=True, pandas_options={'header': None})
+                    if tables:
+                        all_tables.extend([(table, f"Stream_{i+1}") for i, table in enumerate(tables)])
+                        print(f"Found {len(tables)} tables using stream method")
+                except Exception as e:
+                    print(f"Stream tabula failed: {e}")
+                
+                if not all_tables:
+                    print("No tables found with tabula-py")
+                    return False
+                
+                # Process all found tables
+                for table_idx, (df, source) in enumerate(all_tables):
+                    if df is not None and not df.empty:
+                        sheet_name = f"{source}_{table_idx + 1}"[:31]  # Excel sheet name limit
+                        ws = wb.create_sheet(title=sheet_name)
+                        
+                        print(f"Processing table {table_idx + 1} from {source}, shape: {df.shape}")
+                        
+                        # Add table data to worksheet
+                        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), 1):
+                            for c_idx, value in enumerate(row, 1):
+                                if pd.notna(value):
+                                    cell = ws.cell(row=r_idx, column=c_idx, value=str(value))
+                                    
+                                    # Apply formatting for first row
+                                    if r_idx == 1:
+                                        cell.font = Font(bold=True)
+                                        cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                                    
+                                    # Add borders
+                                    cell.border = Border(
+                                        left=Side(style='thin'),
+                                        right=Side(style='thin'),
+                                        top=Side(style='thin'),
+                                        bottom=Side(style='thin')
+                                    )
+                        
+                        # Auto-adjust column widths
+                        for column in ws.columns:
+                            max_length = 0
+                            column_letter = column[0].column_letter
+                            
+                            for cell in column:
+                                try:
+                                    if len(str(cell.value)) > max_length:
+                                        max_length = len(str(cell.value))
+                                except:
+                                    pass
+                            
+                            adjusted_width = min(max_length + 2, 50)
+                            ws.column_dimensions[column_letter].width = adjusted_width
+                
+                wb.save(output_path)
+                return True
+                
+            except Exception as e:
+                print(f"Tabula extraction failed: {e}")
+                return False
+                
+        except Exception as e:
+            print(f"Tabula enhanced conversion failed: {e}")
+            return False
+    
+    def _convert_with_camelot(self, pdf_path: str, output_path: str) -> bool:
+        """Convert using camelot-py for advanced table extraction"""
+        try:
+            if not (camelot and openpyxl):
+                return False
+            
+            print("Attempting camelot table extraction...")
+            wb = Workbook()
+            
+            # Remove default sheet
+            if wb.worksheets:
+                wb.remove(wb.active)
+            
+            # Extract tables using camelot
+            try:
+                # Try lattice method first (for tables with lines)
+                tables = camelot.read_pdf(pdf_path, pages='all', flavor='lattice')
+                
+                if len(tables) == 0:
+                    # Try stream method (for tables without lines)
+                    tables = camelot.read_pdf(pdf_path, pages='all', flavor='stream')
+                
+                if len(tables) == 0:
+                    print("No tables found with camelot")
+                    return False
+                
+                print(f"Found {len(tables)} tables with camelot")
+                
+                for i, table in enumerate(tables):
+                    sheet_name = f"Table_{i+1}_P{table.page}"
+                    ws = wb.create_sheet(title=sheet_name)
+                    
+                    print(f"Processing camelot table {i+1}, accuracy: {table.accuracy:.2f}")
+                    
+                    # Convert table to dataframe and add to worksheet
+                    df = table.df
+                    
+                    for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), 1):
+                        for c_idx, value in enumerate(row, 1):
+                            if pd.notna(value) and str(value).strip():
+                                cell = ws.cell(row=r_idx, column=c_idx, value=str(value).strip())
+                                
+                                # Apply formatting for first row
+                                if r_idx == 1:
+                                    cell.font = Font(bold=True)
+                                    cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                                
+                                # Add borders
+                                cell.border = Border(
+                                    left=Side(style='thin'),
+                                    right=Side(style='thin'),
+                                    top=Side(style='thin'),
+                                    bottom=Side(style='thin')
+                                )
+                    
+                    # Auto-adjust column widths
+                    for column in ws.columns:
+                        max_length = 0
+                        column_letter = column[0].column_letter
+                        
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        
+                        adjusted_width = min(max_length + 2, 50)
+                        ws.column_dimensions[column_letter].width = adjusted_width
+                
+                wb.save(output_path)
+                return True
+                
+            except Exception as e:
+                print(f"Camelot table extraction failed: {e}")
+                return False
+                
+        except Exception as e:
+            print(f"Camelot conversion failed: {e}")
+            return False
+    
+    def _convert_with_pdfplumber_advanced(self, pdf_path: str, output_path: str) -> bool:
+        """Advanced conversion using pdfplumber with better table detection"""
+        try:
+            if not (pdfplumber and openpyxl):
+                return False
+            
+            print("Attempting advanced pdfplumber extraction...")
+            wb = Workbook()
+            
+            # Remove default sheet
+            if wb.worksheets:
+                wb.remove(wb.active)
+            
+            with pdfplumber.open(pdf_path) as pdf:
+                for page_num, page in enumerate(pdf.pages):
+                    print(f"Processing page {page_num + 1} with pdfplumber")
+                    
+                    sheet_name = f"Page_{page_num + 1}"
+                    ws = wb.create_sheet(title=sheet_name)
+                    current_row = 1
+                    
+                    # Extract tables with different settings
+                    tables = []
+                    
+                    # Try different table extraction strategies
+                    strategies = [
+                        {"vertical_strategy": "lines", "horizontal_strategy": "lines"},
+                        {"vertical_strategy": "text", "horizontal_strategy": "text"},
+                        {"vertical_strategy": "lines_strict", "horizontal_strategy": "lines_strict"},
+                    ]
+                    
+                    for strategy in strategies:
+                        try:
+                            page_tables = page.extract_tables(table_settings=strategy)
+                            if page_tables:
+                                tables.extend(page_tables)
+                                print(f"Found {len(page_tables)} tables with strategy {strategy}")
+                                break
+                        except Exception as e:
+                            continue
+                    
+                    if tables:
+                        for table_idx, table in enumerate(tables):
+                            if table and any(any(cell for cell in row if cell) for row in table):
+                                # Add table title
+                                title_cell = ws.cell(row=current_row, column=1, value=f"Table {table_idx + 1}")
+                                title_cell.font = Font(bold=True, size=12)
+                                current_row += 1
+                                
+                                # Process table data
+                                for row_idx, row in enumerate(table):
+                                    if row and any(cell for cell in row if cell):
+                                        for col_idx, cell_value in enumerate(row):
+                                            if cell_value:
+                                                # Clean cell value
+                                                cleaned_value = str(cell_value).strip()
+                                                if cleaned_value:
+                                                    cell = ws.cell(row=current_row, column=col_idx + 1, value=cleaned_value)
+                                                    
+                                                    # Apply formatting for header row
+                                                    if row_idx == 0:
+                                                        cell.font = Font(bold=True)
+                                                        cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                                                    
+                                                    # Add borders
+                                                    cell.border = Border(
+                                                        left=Side(style='thin'),
+                                                        right=Side(style='thin'),
+                                                        top=Side(style='thin'),
+                                                        bottom=Side(style='thin')
+                                                    )
+                                        
+                                        current_row += 1
+                                
+                                current_row += 2  # Space between tables
+                    
+                    else:
+                        # No tables found, extract text and try to parse structured data
+                        text = page.extract_text()
+                        if text:
+                            print(f"No tables found on page {page_num + 1}, extracting text")
+                            lines = text.split('\n')
+                            
+                            # Try to detect tabular data in text
+                            structured_data = self._extract_structured_text_data(lines)
+                            
+                            if structured_data:
+                                print(f"Found structured data with {len(structured_data)} rows")
+                                for row_data in structured_data:
+                                    for col_idx, value in enumerate(row_data):
+                                        if value.strip():
+                                            ws.cell(row=current_row, column=col_idx + 1, value=value.strip())
+                                    current_row += 1
+                            else:
+                                # Extract all text as single column
+                                for line in lines:
+                                    if line.strip():
+                                        ws.cell(row=current_row, column=1, value=line.strip())
+                                        current_row += 1
+            
+            # Auto-adjust column widths for all sheets
+            for sheet in wb.worksheets:
+                for column in sheet.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    
+                    adjusted_width = min(max_length + 2, 50)
+                    sheet.column_dimensions[column_letter].width = adjusted_width
+            
+            wb.save(output_path)
+            return True
+            
+        except Exception as e:
+            print(f"PDFplumber advanced conversion failed: {e}")
+            return False
+    
     def _convert_with_pymupdf_enhanced(self, pdf_path: str, output_path: str) -> bool:
-        """Enhanced conversion using PyMuPDF with image and table extraction"""
+        """Enhanced conversion using PyMuPDF"""
         try:
             if not (fitz and openpyxl):
                 return False
             
+            print("Attempting PyMuPDF enhanced extraction...")
             doc = fitz.open(pdf_path)
             wb = Workbook()
             
@@ -175,105 +456,71 @@ class PDFToExcelConverter:
                 sheet_name = f"Page_{page_num + 1}"
                 ws = wb.create_sheet(title=sheet_name)
                 
-                print(f"Processing page {page_num + 1} with PyMuPDF enhanced method")
-                
-                # Extract tables using PyMuPDF
-                tables = page.find_tables()
+                print(f"Processing page {page_num + 1} with PyMuPDF")
                 current_row = 1
                 
-                if tables:
-                    for table_idx, table in enumerate(tables):
-                        print(f"Found table {table_idx + 1} on page {page_num + 1}")
-                        
-                        # Extract table data
-                        table_data = table.extract()
-                        
-                        # Add table title
-                        title_cell = ws.cell(row=current_row, column=1, value=f"Table {table_idx + 1}")
-                        title_cell.font = Font(bold=True, size=12)
-                        current_row += 1
-                        
-                        # Add table data with formatting
-                        for row_idx, row_data in enumerate(table_data):
-                            for col_idx, cell_value in enumerate(row_data):
-                                if cell_value:
-                                    cell = ws.cell(row=current_row, column=col_idx + 1, value=str(cell_value))
-                                    
-                                    # Apply formatting for header row
-                                    if row_idx == 0:
-                                        cell.font = Font(bold=True)
-                                        cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
-                                    
-                                    # Add borders
-                                    thin_border = Border(
-                                        left=Side(style='thin'),
-                                        right=Side(style='thin'),
-                                        top=Side(style='thin'),
-                                        bottom=Side(style='thin')
-                                    )
-                                    cell.border = thin_border
+                # Extract tables
+                try:
+                    tables = page.find_tables()
+                    if tables:
+                        for table_idx, table in enumerate(tables):
+                            print(f"Found table {table_idx + 1} on page {page_num + 1}")
                             
+                            # Add table title
+                            title_cell = ws.cell(row=current_row, column=1, value=f"Table {table_idx + 1}")
+                            title_cell.font = Font(bold=True, size=12)
                             current_row += 1
+                            
+                            # Extract table data
+                            table_data = table.extract()
+                            
+                            for row_idx, row_data in enumerate(table_data):
+                                if row_data and any(cell for cell in row_data if cell):
+                                    for col_idx, cell_value in enumerate(row_data):
+                                        if cell_value:
+                                            cleaned_value = str(cell_value).strip()
+                                            if cleaned_value:
+                                                cell = ws.cell(row=current_row, column=col_idx + 1, value=cleaned_value)
+                                                
+                                                # Apply formatting for header row
+                                                if row_idx == 0:
+                                                    cell.font = Font(bold=True)
+                                                    cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                                                
+                                                # Add borders
+                                                cell.border = Border(
+                                                    left=Side(style='thin'),
+                                                    right=Side(style='thin'),
+                                                    top=Side(style='thin'),
+                                                    bottom=Side(style='thin')
+                                                )
+                                    
+                                    current_row += 1
+                            
+                            current_row += 2  # Space between tables
+                    
+                    else:
+                        # No tables found, extract text
+                        text = page.get_text()
+                        if text:
+                            lines = text.split('\n')
+                            structured_data = self._extract_structured_text_data(lines)
+                            
+                            if structured_data:
+                                for row_data in structured_data:
+                                    for col_idx, value in enumerate(row_data):
+                                        if value.strip():
+                                            ws.cell(row=current_row, column=col_idx + 1, value=value.strip())
+                                    current_row += 1
+                            else:
+                                for line in lines:
+                                    if line.strip():
+                                        ws.cell(row=current_row, column=1, value=line.strip())
+                                        current_row += 1
                         
-                        current_row += 2  # Add space between tables
-                
-                # Extract images
-                image_list = page.get_images()
-                if image_list:
-                    current_row += 1
-                    image_title = ws.cell(row=current_row, column=1, value="Images")
-                    image_title.font = Font(bold=True, size=12)
-                    current_row += 1
-                    
-                    for img_idx, img in enumerate(image_list):
-                        try:
-                            xref = img[0]
-                            pix = fitz.Pixmap(doc, xref)
-                            
-                            if pix.n - pix.alpha < 4:  # GRAY or RGB
-                                img_data = pix.tobytes("png")
-                                img_path = os.path.join(self.output_dir, f"temp_img_{page_num}_{img_idx}.png")
-                                
-                                with open(img_path, "wb") as img_file:
-                                    img_file.write(img_data)
-                                
-                                # Add image to Excel (note: this is a placeholder - actual image embedding requires more complex handling)
-                                img_cell = ws.cell(row=current_row, column=1, value=f"Image {img_idx + 1} (extracted)")
-                                current_row += 1
-                                
-                                # Clean up temp image
-                                try:
-                                    os.remove(img_path)
-                                except:
-                                    pass
-                            
-                            pix = None
-                        except Exception as img_error:
-                            print(f"Error extracting image {img_idx}: {img_error}")
-                
-                # Extract remaining text that's not in tables
-                text_dict = page.get_text("dict")
-                text_content = []
-                
-                for block in text_dict["blocks"]:
-                    if "lines" in block:
-                        for line in block["lines"]:
-                            for span in line["spans"]:
-                                text_content.append(span["text"])
-                
-                if text_content and not tables:
-                    # If no tables found, extract text content
-                    current_row += 1
-                    text_title = ws.cell(row=current_row, column=1, value="Text Content")
-                    text_title.font = Font(bold=True, size=12)
-                    current_row += 1
-                    
-                    # Group text into meaningful chunks
-                    text_chunks = self._group_text_content(text_content)
-                    for chunk in text_chunks:
-                        if chunk.strip():
-                            ws.cell(row=current_row, column=1, value=chunk.strip())
-                            current_row += 1
+                except Exception as e:
+                    print(f"Error processing page {page_num + 1}: {e}")
+                    continue
             
             doc.close()
             
@@ -300,238 +547,160 @@ class PDFToExcelConverter:
             print(f"PyMuPDF enhanced conversion failed: {e}")
             return False
     
-    def _convert_with_advanced_table_extraction(self, pdf_path: str, output_path: str) -> bool:
-        """Advanced table extraction using multiple libraries"""
+    def _convert_with_text_extraction(self, pdf_path: str, output_path: str) -> bool:
+        """Fallback method: extract all text and structure it"""
         try:
-            if not (openpyxl and pdfplumber):
+            if not openpyxl:
                 return False
             
-            wb = Workbook()
-            
-            # Remove default sheet
-            if wb.worksheets:
-                wb.remove(wb.active)
-            
-            with pdfplumber.open(pdf_path) as pdf:
-                for page_num, page in enumerate(pdf.pages):
-                    print(f"Extracting tables from page {page_num + 1}")
-                    
-                    sheet_name = f"Page_{page_num + 1}"
-                    ws = wb.create_sheet(title=sheet_name)
-                    
-                    # Extract tables using pdfplumber
-                    tables = page.extract_tables()
-                    current_row = 1
-                    
-                    if tables:
-                        for table_idx, table in enumerate(tables):
-                            print(f"Processing table {table_idx + 1} on page {page_num + 1}")
-                            
-                            # Add table title
-                            title_cell = ws.cell(row=current_row, column=1, value=f"Table {table_idx + 1}")
-                            title_cell.font = Font(bold=True, size=12)
-                            current_row += 1
-                            
-                            # Process table data
-                            for row_idx, row in enumerate(table):
-                                if row:  # Skip empty rows
-                                    for col_idx, cell_value in enumerate(row):
-                                        if cell_value is not None:
-                                            # Clean and process cell value
-                                            cleaned_value = str(cell_value).strip()
-                                            
-                                            # Try to convert to number if possible
-                                            try:
-                                                if '.' in cleaned_value or ',' in cleaned_value:
-                                                    # Handle decimal numbers
-                                                    numeric_value = float(cleaned_value.replace(',', ''))
-                                                    cell = ws.cell(row=current_row, column=col_idx + 1, value=numeric_value)
-                                                elif cleaned_value.isdigit():
-                                                    # Handle integers
-                                                    cell = ws.cell(row=current_row, column=col_idx + 1, value=int(cleaned_value))
-                                                else:
-                                                    cell = ws.cell(row=current_row, column=col_idx + 1, value=cleaned_value)
-                                            except:
-                                                cell = ws.cell(row=current_row, column=col_idx + 1, value=cleaned_value)
-                                            
-                                            # Apply formatting
-                                            if row_idx == 0:  # Header row
-                                                cell.font = Font(bold=True)
-                                                cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
-                                            
-                                            # Add borders
-                                            thin_border = Border(
-                                                left=Side(style='thin'),
-                                                right=Side(style='thin'),
-                                                top=Side(style='thin'),
-                                                bottom=Side(style='thin')
-                                            )
-                                            cell.border = thin_border
-                                
-                                current_row += 1
-                            
-                            current_row += 2  # Space between tables
-                    
-                    else:
-                        # No tables found, extract text content
-                        text = page.extract_text()
-                        if text:
-                            lines = text.split('\n')
-                            
-                            # Try to detect structured data in text
-                            structured_data = self._detect_structured_data(lines)
-                            
-                            if structured_data:
-                                for row_data in structured_data:
-                                    for col_idx, value in enumerate(row_data):
-                                        ws.cell(row=current_row, column=col_idx + 1, value=value)
-                                    current_row += 1
-                            else:
-                                # Just add text line by line
-                                for line in lines:
-                                    if line.strip():
-                                        ws.cell(row=current_row, column=1, value=line.strip())
-                                        current_row += 1
-            
-            # Auto-adjust column widths
-            for sheet in wb.worksheets:
-                for column in sheet.columns:
-                    max_length = 0
-                    column_letter = column[0].column_letter
-                    
-                    for cell in column:
-                        try:
-                            if len(str(cell.value)) > max_length:
-                                max_length = len(str(cell.value))
-                        except:
-                            pass
-                    
-                    adjusted_width = min(max_length + 2, 50)
-                    sheet.column_dimensions[column_letter].width = adjusted_width
-            
-            wb.save(output_path)
-            return True
-            
-        except Exception as e:
-            print(f"Advanced table extraction failed: {e}")
-            return False
-    
-    def _convert_with_pdfplumber(self, pdf_path: str, output_path: str) -> bool:
-        """Convert using pdfplumber for text and basic table extraction"""
-        try:
-            if not (pdfplumber and openpyxl):
-                return False
-            
+            print("Attempting raw text extraction as fallback...")
             wb = Workbook()
             ws = wb.active
             ws.title = "PDF_Content"
             
             current_row = 1
             
-            with pdfplumber.open(pdf_path) as pdf:
-                for page_num, page in enumerate(pdf.pages):
-                    # Add page header
-                    page_header = ws.cell(row=current_row, column=1, value=f"Page {page_num + 1}")
-                    page_header.font = Font(bold=True, size=14)
-                    current_row += 2
-                    
-                    # Extract text
-                    text = page.extract_text()
-                    if text:
-                        lines = text.split('\n')
-                        for line in lines:
-                            if line.strip():
-                                ws.cell(row=current_row, column=1, value=line.strip())
-                                current_row += 1
-                    
-                    current_row += 2  # Space between pages
+            # Try different text extraction methods
+            text_content = []
             
-            wb.save(output_path)
-            return True
+            # Method 1: PyMuPDF
+            if fitz:
+                try:
+                    doc = fitz.open(pdf_path)
+                    for page_num in range(len(doc)):
+                        page = doc.load_page(page_num)
+                        text = page.get_text()
+                        if text:
+                            text_content.append(f"=== Page {page_num + 1} ===")
+                            text_content.extend(text.split('\n'))
+                    doc.close()
+                except Exception as e:
+                    print(f"PyMuPDF text extraction failed: {e}")
             
-        except Exception as e:
-            print(f"PDFplumber conversion failed: {e}")
-            return False
-    
-    def _convert_with_basic_extraction(self, pdf_path: str, output_path: str) -> bool:
-        """Basic text extraction as last resort"""
-        try:
-            if not openpyxl:
-                return False
+            # Method 2: pdfplumber
+            if not text_content and pdfplumber:
+                try:
+                    with pdfplumber.open(pdf_path) as pdf:
+                        for page_num, page in enumerate(pdf.pages):
+                            text = page.extract_text()
+                            if text:
+                                text_content.append(f"=== Page {page_num + 1} ===")
+                                text_content.extend(text.split('\n'))
+                except Exception as e:
+                    print(f"pdfplumber text extraction failed: {e}")
             
-            wb = Workbook()
-            ws = wb.active
-            ws.title = "PDF_Text"
+            if not text_content:
+                # Create basic file info
+                ws.cell(row=1, column=1, value="PDF Text Extraction Results")
+                ws.cell(row=1, column=1).font = Font(bold=True, size=14)
+                ws.cell(row=3, column=1, value=f"Source: {os.path.basename(pdf_path)}")
+                ws.cell(row=4, column=1, value="Status: Text extraction failed - file may be image-based or encrypted")
+                wb.save(output_path)
+                return True
             
-            # Add a simple message indicating basic extraction
-            ws.cell(row=1, column=1, value="PDF Content (Basic Text Extraction)")
-            ws.cell(row=1, column=1).font = Font(bold=True, size=12)
+            # Process extracted text
+            structured_data = self._extract_structured_text_data(text_content)
             
-            ws.cell(row=3, column=1, value="Content extracted from PDF file")
-            ws.cell(row=4, column=1, value=f"Source: {os.path.basename(pdf_path)}")
+            if structured_data:
+                print(f"Extracted {len(structured_data)} rows of structured data")
+                for row_data in structured_data:
+                    for col_idx, value in enumerate(row_data):
+                        if value.strip():
+                            ws.cell(row=current_row, column=col_idx + 1, value=value.strip())
+                    current_row += 1
+            else:
+                # Add text line by line
+                for line in text_content:
+                    if line.strip():
+                        ws.cell(row=current_row, column=1, value=line.strip())
+                        current_row += 1
             
-            wb.save(output_path)
-            return True
-            
-        except Exception as e:
-            print(f"Basic extraction failed: {e}")
-            return False
-    
-    def _group_text_content(self, text_list: List[str]) -> List[str]:
-        """Group text content into meaningful chunks"""
-        grouped = []
-        current_chunk = []
-        
-        for text in text_list:
-            text = text.strip()
-            if text:
-                current_chunk.append(text)
+            # Auto-adjust column widths
+            for column in ws.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
                 
-                # Start new chunk if we have enough text or hit certain patterns
-                if len(' '.join(current_chunk)) > 100 or text.endswith(('.', '!', '?', ':')):
-                    grouped.append(' '.join(current_chunk))
-                    current_chunk = []
-        
-        # Add remaining text
-        if current_chunk:
-            grouped.append(' '.join(current_chunk))
-        
-        return grouped
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)
+                ws.column_dimensions[column_letter].width = adjusted_width
+            
+            wb.save(output_path)
+            return True
+            
+        except Exception as e:
+            print(f"Text extraction fallback failed: {e}")
+            return False
     
-    def _detect_structured_data(self, lines: List[str]) -> List[List[str]]:
-        """Detect structured data patterns in text lines"""
+    def _extract_structured_text_data(self, lines: List[str]) -> List[List[str]]:
+        """Enhanced structured data detection from text lines"""
         structured_data = []
         
         for line in lines:
             line = line.strip()
-            if not line:
+            if not line or line.startswith('==='):
                 continue
             
-            # Look for patterns that might indicate tabular data
-            # Split by common delimiters
+            # Method 1: Tab-separated values
             if '\t' in line:
-                structured_data.append(line.split('\t'))
-            elif '|' in line and line.count('|') > 1:
-                parts = [part.strip() for part in line.split('|') if part.strip()]
-                if parts:
+                parts = [part.strip() for part in line.split('\t')]
+                if len(parts) > 1 and any(part for part in parts):
                     structured_data.append(parts)
-            elif re.search(r'\s{3,}', line):  # Multiple spaces might indicate columns
-                parts = re.split(r'\s{3,}', line)
+                continue
+            
+            # Method 2: Multiple spaces (common in PDFs)
+            if re.search(r'\s{3,}', line):
+                parts = [part.strip() for part in re.split(r'\s{3,}', line)]
+                if len(parts) > 1 and any(part for part in parts):
+                    structured_data.append(parts)
+                continue
+            
+            # Method 3: Pipe-separated values
+            if '|' in line and line.count('|') > 1:
+                parts = [part.strip() for part in line.split('|') if part.strip()]
                 if len(parts) > 1:
                     structured_data.append(parts)
+                continue
+            
+            # Method 4: Comma-separated (but be careful with regular text)
+            if ',' in line and len(line.split(',')) > 2:
+                # Only consider as CSV if it looks like data (has numbers or consistent structure)
+                parts = [part.strip() for part in line.split(',')]
+                if len(parts) > 2 and (any(re.search(r'\d', part) for part in parts) or 
+                                      all(len(part) < 50 for part in parts)):
+                    structured_data.append(parts)
+                continue
+            
+            # Method 5: Detect patterns like "Key: Value" pairs
+            if ':' in line and not line.endswith(':'):
+                parts = [part.strip() for part in line.split(':')]
+                if len(parts) == 2 and both(parts):
+                    structured_data.append(parts)
+                continue
         
-        return structured_data if len(structured_data) > 1 else None
+        # Only return structured data if we have enough consistent rows
+        if len(structured_data) >= 2:
+            # Check if rows have similar column counts
+            col_counts = [len(row) for row in structured_data]
+            avg_cols = sum(col_counts) / len(col_counts)
+            
+            # Filter rows that are close to average column count
+            filtered_data = [row for row in structured_data 
+                           if abs(len(row) - avg_cols) <= 2]
+            
+            if len(filtered_data) >= 2:
+                return filtered_data
+        
+        return None
 
 def convert_pdf_to_excel(pdf_path: str, output_dir: str = None) -> Dict[str, Any]:
     """
-    Main function to convert PDF to Excel
-    
-    Args:
-        pdf_path: Path to PDF file
-        output_dir: Directory to save converted file
-        
-    Returns:
-        Conversion result dictionary
+    Main function to convert PDF to Excel with enhanced capabilities
     """
     converter = PDFToExcelConverter(output_dir)
     return converter.convert_pdf_to_excel(pdf_path)
@@ -540,7 +709,6 @@ def test_converter():
     """Test function for the PDF to Excel converter"""
     converter = PDFToExcelConverter()
     
-    # Test with a sample PDF
     test_pdf = "test_sample.pdf"
     if not os.path.exists(test_pdf):
         print("No test PDF found, skipping test")
