@@ -1,11 +1,12 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ conversionId: string }> }
+  { params }: { params: { conversionId: string } }
 ) {
   try {
-    const { conversionId } = await params;
+    const { conversionId } = params;
 
     if (!conversionId) {
       return NextResponse.json(
@@ -14,43 +15,50 @@ export async function GET(
       );
     }
 
-    // Forward to Python backend
+    // Check status with Python backend
     const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
-
+    
     const response = await fetch(`${pythonApiUrl}/api/status/${conversionId}`, {
       method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {
       if (response.status === 404) {
         return NextResponse.json(
-          { error: 'Conversion not found' },
+          { error: 'Conversion not found', status: 'not_found' },
           { status: 404 }
         );
       }
-
+      
       const errorText = await response.text();
-      console.error('Backend status error:', errorText);
+      console.error('Backend status check error:', errorText);
       return NextResponse.json(
-        { error: `Status check error: ${response.status}` },
+        { error: `Status check failed: ${response.status}` },
         { status: response.status }
       );
     }
 
     const result = await response.json();
-    return NextResponse.json(result);
+    
+    // Transform the response to match frontend expectations
+    const transformedResult = {
+      conversion_id: result.conversion_id || conversionId,
+      success: result.success || false,
+      status: result.status || (result.success ? 'completed' : 'processing'),
+      filename: result.filename,
+      download_url: result.download_url,
+      error: result.error,
+      metadata: result.metadata || {},
+      method: result.method
+    };
+
+    return NextResponse.json(transformedResult);
 
   } catch (error) {
-    console.error('API status proxy error:', error);
-
-    // Check if it's a connection error
-    if (error instanceof Error && error.message.includes('ECONNREFUSED')) {
-      return NextResponse.json(
-        { error: 'Conversion service is not available. Please ensure the backend server is running.' },
-        { status: 503 }
-      );
-    }
-
+    console.error('Status check error:', error);
     return NextResponse.json(
       { error: 'Internal server error during status check' },
       { status: 500 }

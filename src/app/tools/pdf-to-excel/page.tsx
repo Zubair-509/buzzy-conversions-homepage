@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback } from 'react';
@@ -48,39 +47,75 @@ export default function PDFToExcelPage() {
   });
 
   const pollConversionStatus = async (conversionId: string) => {
-    try {
-      const response = await fetch(`/api/status/${conversionId}`);
-      const result = await response.json();
-      
-      if (result.status === 'completed' && result.success) {
-        setProgress(100);
-        setConversionResult({
-          success: true,
-          download_url: result.download_url,
-          filename: result.filename,
-          message: `Conversion completed successfully using ${result.metadata?.method || 'advanced'} method`,
-          method: result.metadata?.method
-        });
-        setIsConverting(false);
-      } else if (result.status === 'failed' || result.error) {
+    const maxAttempts = 60; // 60 attempts * 2 seconds = 2 minutes
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        attempts++;
+        console.log(`Polling attempt ${attempts} for conversion ${conversionId}`);
+
+        const response = await fetch(`/api/status/${conversionId}`);
+
+        if (response.status === 404) {
+          // Conversion not found, continue polling for a bit more
+          if (attempts < 10) {
+            console.log('Conversion not found yet, retrying...');
+            const progressPercentage = Math.min((attempts / maxAttempts) * 20, 20);
+            setProgress(progressPercentage);
+            setTimeout(poll, 2000);
+            return;
+          } else {
+            throw new Error('Conversion not found after multiple attempts');
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(`Status check failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Status result:', result);
+
+        if (result.success && result.download_url) {
+          setProgress(100);
+          setConversionResult(result);
+          setIsConverting(false);
+          return;
+        }
+
+        if (result.error) {
+          console.error('Conversion error:', result.error);
+          setConversionResult(result);
+          setIsConverting(false);
+          return;
+        }
+
+        // Still processing
+        if (attempts < maxAttempts) {
+          const progressPercentage = Math.min(20 + (attempts / maxAttempts) * 70, 90);
+          setProgress(progressPercentage);
+          setTimeout(poll, 2000);
+        } else {
+          // Timeout
+          setConversionResult({
+            success: false,
+            error: 'Conversion timeout - the file may be too large or complex. Please try again with a smaller file.'
+          });
+          setIsConverting(false);
+        }
+      } catch (error) {
+        console.error('Status polling error:', error);
         setConversionResult({
           success: false,
-          error: result.error || 'Conversion failed'
+          error: error instanceof Error ? error.message : 'Failed to check conversion status'
         });
         setIsConverting(false);
-      } else {
-        // Still processing, continue polling
-        setTimeout(() => pollConversionStatus(conversionId), 2000);
-        setProgress(prev => Math.min(prev + 10, 90));
       }
-    } catch (error) {
-      console.error('Error polling status:', error);
-      setConversionResult({
-        success: false,
-        error: 'Failed to check conversion status'
-      });
-      setIsConverting(false);
-    }
+    };
+
+    // Start polling after a brief delay to allow backend to initialize
+    setTimeout(poll, 1000);
   };
 
   const handleConvert = async () => {
@@ -143,17 +178,17 @@ export default function PDFToExcelPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       {/* Hero Section */}
       <section className="relative py-32 lg:py-40 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/20"></div>
-        
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center space-y-8">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto">
               <FileSpreadsheet className="w-10 h-10 text-primary" />
             </div>
-            
+
             <div className="space-y-4">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold bg-gradient-to-r from-primary via-primary/90 to-primary/80 bg-clip-text text-transparent">
                 PDF to Excel Converter
