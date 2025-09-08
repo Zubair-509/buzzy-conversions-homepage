@@ -96,7 +96,7 @@ class APIHandler(BaseHTTPRequestHandler):
             path_parts = parsed_path.path.split('/')
             if len(path_parts) >= 4:
                 download_id = path_parts[3]
-                filename = path_parts[4] if len(path_parts) > 4 else None
+                filename = urllib.parse.unquote(path_parts[4]) if len(path_parts) > 4 else None
 
                 if download_id in conversion_storage:
                     result = conversion_storage[download_id]

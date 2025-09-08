@@ -7,9 +7,9 @@ export async function GET(
   try {
     const { downloadId, filename } = await params;
     
-    // Forward the request to the Python backend
+    // Forward the request to the Python backend - filename is already URL encoded
     const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
-    const response = await fetch(`${pythonApiUrl}/api/download/${downloadId}/${filename}`, {
+    const response = await fetch(`${pythonApiUrl}/api/download/${downloadId}/${encodeURIComponent(filename)}`, {
       method: 'GET',
     });
     
@@ -32,11 +32,27 @@ export async function GET(
     // Get the file stream
     const fileBuffer = await response.arrayBuffer();
     
+    // Determine content type based on file extension
+    let contentType = 'application/octet-stream';
+    if (filename.endsWith('.pdf')) {
+      contentType = 'application/pdf';
+    } else if (filename.endsWith('.docx')) {
+      contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    } else if (filename.endsWith('.pptx')) {
+      contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    } else if (filename.endsWith('.xlsx')) {
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    } else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) {
+      contentType = 'image/jpeg';
+    } else if (filename.endsWith('.zip')) {
+      contentType = 'application/zip';
+    }
+    
     // Return the file with proper headers
     return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': fileBuffer.byteLength.toString(),
       },
