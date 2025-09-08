@@ -33,9 +33,7 @@ const nextConfig = {
   },
   
   // Development configuration for Replit
-  experimental: {
-    serverComponentsExternalPackages: ['pdf2docx'],
-  }
+  serverExternalPackages: ['pdf2docx'],
 };
 
 module.exports = nextConfig;
