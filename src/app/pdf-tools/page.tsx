@@ -151,7 +151,7 @@ export default function PDFToolsPage() {
     {
       icon: <FileSpreadsheet className="w-6 h-6 text-primary" />,
       title: "Excel to PDF",
-      description: "Convert spreadsheets to PDF with formatting intact",
+      description: "Convert spreadsheets to PDF with charts and formatting intact",
       href: "/tools/excel-to-pdf"
     },
     {

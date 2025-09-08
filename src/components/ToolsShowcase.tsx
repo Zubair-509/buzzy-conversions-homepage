@@ -96,6 +96,14 @@ const tools: Tool[] = [
     route: "/tools/word-to-pdf"
   },
   {
+    id: "excel-to-pdf", // Added Excel to PDF tool
+    name: "Excel to PDF",
+    description: "Convert Excel spreadsheets to PDF format while preserving charts, formatting, and formulas",
+    icon: FileSpreadsheet,
+    category: "pdf",
+    route: "/tools/excel-to-pdf"
+  },
+  {
     id: "powerpoint-to-pdf", // Added new tool ID
     name: "PowerPoint to PDF",
     description: "Convert PowerPoint presentations to PDF while preserving slides, images, and templates",
