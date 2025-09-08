@@ -27,7 +27,8 @@ import {
   LassoSelect,
   TabletSmartphone,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Code
 } from "lucide-react";
 
 // Import router if it's used for navigation
@@ -103,6 +104,15 @@ const tools: Tool[] = [
     icon: FileSpreadsheet,
     category: "pdf",
     route: "/tools/excel-to-pdf"
+  },
+  {
+    id: "html-to-pdf",
+    name: "HTML to PDF",
+    description: "Convert HTML files to PDF format while preserving formatting, layout, images, and styling",
+    icon: Code,
+    category: "pdf",
+    route: "/tools/html-to-pdf",
+    badge: "new"
   },
   {
     id: "powerpoint-to-pdf", // Added new tool ID
