@@ -1,7 +1,6 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 
-const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://127.0.0.1:8000';
+const pythonApiUrl = process.env.PYTHON_API_URL || process.env.BACKEND_URL || 'http://localhost:8000';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +26,7 @@ export async function POST(request: NextRequest) {
     const backendFormData = new FormData();
     backendFormData.append('file', file);
 
-    const response = await fetch(`${PYTHON_API_URL}/api/convert/word-to-pdf`, {
+    const response = await fetch(`${pythonApiUrl}/api/convert/word-to-pdf`, {
       method: 'POST',
       body: backendFormData,
     });

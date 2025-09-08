@@ -16,7 +16,7 @@ export async function GET(
     }
 
     // Check status with Python backend
-    const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
+    const pythonApiUrl = process.env.PYTHON_API_URL || process.env.BACKEND_URL || 'http://localhost:8000';
     
     const response = await fetch(`${pythonApiUrl}/api/status/${conversionId}`, {
       method: 'GET',
