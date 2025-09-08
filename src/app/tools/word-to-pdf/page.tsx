@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -16,18 +17,20 @@ export default function WordToPdfPage() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [conversionMethod, setConversionMethod] = useState<string | null>(null);
+  const [conversionId, setConversionId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (selectedFile: File) => {
-    if (selectedFile && selectedFile.name.toLowerCase().endsWith('.docx')) {
+    if (selectedFile && (selectedFile.name.toLowerCase().endsWith('.docx') || selectedFile.name.toLowerCase().endsWith('.doc'))) {
       setFile(selectedFile);
       setConversionStatus('idle');
       setErrorMessage('');
       setDownloadUrl(null);
       setConversionMethod(null);
+      setConversionId(null);
       setFileSize(selectedFile.size);
     } else {
-      setErrorMessage('Please select a valid DOCX file.');
+      setErrorMessage('Please select a valid Word document (.doc or .docx).');
       setFile(null);
       setFileSize(0);
     }
@@ -52,9 +55,32 @@ export default function WordToPdfPage() {
     }
   };
 
+  const pollConversionStatus = async (conversionId: string) => {
+    try {
+      const response = await fetch(`/api/status/${conversionId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setConversionStatus('success');
+        setDownloadUrl(result.download_url);
+        setConversionMethod(result.method);
+      } else if (result.status === 'processing') {
+        // Continue polling
+        setTimeout(() => pollConversionStatus(conversionId), 2000);
+      } else {
+        setConversionStatus('error');
+        setErrorMessage(result.error || 'Conversion failed');
+      }
+    } catch (error) {
+      console.error('Status polling error:', error);
+      setConversionStatus('error');
+      setErrorMessage('Failed to check conversion status');
+    }
+  };
+
   const handleConvert = async () => {
     if (!file) {
-      setErrorMessage('Please select a DOCX file first.');
+      setErrorMessage('Please select a Word document first.');
       return;
     }
 
@@ -76,9 +102,9 @@ export default function WordToPdfPage() {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        setConversionStatus('success');
-        setDownloadUrl(`/api/download/${result.download_id}/${result.filename}`);
-        setConversionMethod(result.conversion_method);
+        setConversionId(result.conversion_id);
+        // Start polling for conversion status
+        setTimeout(() => pollConversionStatus(result.conversion_id), 1000);
       } else {
         setConversionStatus('error');
         setErrorMessage(result.error || 'Conversion failed. Please try again.');
@@ -99,6 +125,7 @@ export default function WordToPdfPage() {
     setErrorMessage('');
     setDownloadUrl(null);
     setConversionMethod(null);
+    setConversionId(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -123,7 +150,7 @@ export default function WordToPdfPage() {
                 Word to PDF Converter
               </h1>
               <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Convert Word documents to professional PDF files. Preserve formatting, fonts, and layout perfectly.
+                Convert Word documents to professional PDF files. Preserve formatting, fonts, images, tables, and layout perfectly.
               </p>
             </div>
           </div>
@@ -136,7 +163,7 @@ export default function WordToPdfPage() {
           <Card className="border-2 border-primary/10 shadow-xl">
             <CardHeader className="text-center pb-8">
               <CardTitle className="text-2xl font-display">Upload Your Word Document</CardTitle>
-              <CardDescription>Convert .doc, .docx files to PDF format</CardDescription>
+              <CardDescription>Convert .doc, .docx files to PDF format with perfect formatting</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Upload Area */}
@@ -151,7 +178,7 @@ export default function WordToPdfPage() {
                 <p className="text-muted-foreground mb-4">Support for .doc, .docx formats</p>
                 <input
                   type="file"
-                  accept=".docx"
+                  accept=".docx,.doc"
                   ref={fileInputRef}
                   onChange={handleFileInputChange}
                   className="hidden"
@@ -166,6 +193,13 @@ export default function WordToPdfPage() {
                 <div className="flex items-center gap-2 text-red-500 p-4 border border-red-500/30 bg-red-500/10 rounded-lg">
                   <AlertCircle className="w-5 h-5" />
                   <p>{errorMessage}</p>
+                </div>
+              )}
+
+              {conversionStatus === 'converting' && (
+                <div className="flex items-center gap-2 text-blue-500 p-4 border border-blue-500/30 bg-blue-500/10 rounded-lg">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                  <p>Converting your document... This may take a moment.</p>
                 </div>
               )}
 
@@ -233,6 +267,9 @@ export default function WordToPdfPage() {
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold">
               Professional PDF Creation
             </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Convert Word documents with complete accuracy, preserving all formatting, images, and tables
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -241,7 +278,7 @@ export default function WordToPdfPage() {
                 <Lock className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-display font-semibold">Format Preservation</h3>
-              <p className="text-muted-foreground">Maintains all formatting, fonts, and images</p>
+              <p className="text-muted-foreground">Maintains all formatting, fonts, images, and tables perfectly</p>
             </div>
 
             <div className="text-center space-y-4">
@@ -249,7 +286,7 @@ export default function WordToPdfPage() {
                 <CheckCircle className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-display font-semibold">Universal Compatibility</h3>
-              <p className="text-muted-foreground">Works with all Word versions and formats</p>
+              <p className="text-muted-foreground">Works with all Word versions (.doc and .docx)</p>
             </div>
 
             <div className="text-center space-y-4">
@@ -257,7 +294,7 @@ export default function WordToPdfPage() {
                 <Zap className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-display font-semibold">Lightning Fast</h3>
-              <p className="text-muted-foreground">Convert documents in seconds</p>
+              <p className="text-muted-foreground">Convert documents in seconds with multiple conversion methods</p>
             </div>
 
             <div className="text-center space-y-4">
@@ -265,7 +302,7 @@ export default function WordToPdfPage() {
                 <Shield className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-display font-semibold">Secure Processing</h3>
-              <p className="text-muted-foreground">Your documents are safe and private</p>
+              <p className="text-muted-foreground">Your documents are safe and private during conversion</p>
             </div>
           </div>
         </div>
