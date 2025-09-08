@@ -220,7 +220,7 @@ class WordToPDFConverter:
             return False
     
     def _convert_with_libreoffice(self, word_path: str, output_path: str) -> bool:
-        """Convert using LibreOffice headless mode"""
+        """Convert using LibreOffice headless mode with enhanced formatting preservation"""
         try:
             # Check if LibreOffice is available
             libreoffice_commands = ['libreoffice', 'soffice']
@@ -241,11 +241,64 @@ class WordToPDFConverter:
             # Create temp directory for conversion
             temp_output_dir = tempfile.mkdtemp()
             
-            # Convert using LibreOffice headless
+            try:
+                # Method 1: Advanced conversion with formatting preservation
+                if self._convert_with_libreoffice_advanced(libreoffice_cmd, word_path, temp_output_dir, output_path):
+                    return True
+                
+                # Method 2: Fallback to basic conversion
+                return self._convert_with_libreoffice_basic(libreoffice_cmd, word_path, temp_output_dir, output_path)
+                
+            finally:
+                # Always clean up temp directory
+                shutil.rmtree(temp_output_dir, ignore_errors=True)
+            
+        except Exception as e:
+            print(f"LibreOffice conversion error: {e}")
+            return False
+    
+    def _convert_with_libreoffice_advanced(self, libreoffice_cmd: str, word_path: str, temp_output_dir: str, output_path: str) -> bool:
+        """Advanced LibreOffice conversion with maximum formatting preservation"""
+        try:
+            # Use LibreOffice macro to ensure better formatting preservation
             cmd = [
                 libreoffice_cmd,
                 '--headless',
-                '--convert-to', 'pdf',
+                '--invisible',
+                '--nodefault',
+                '--nolockcheck',
+                '--nologo',
+                '--norestore',
+                '--convert-to', 'pdf:writer_pdf_Export:{"UseTaggedPDF":true,"ExportFormFields":false,"FormsType":0,"AllowDuplicateFieldNames":false,"ExportBookmarks":true,"ExportPlaceholders":false,"ExportNotes":false,"ExportNotesPages":false,"ExportOnlyNotesPages":false,"ExportNotesInMargin":false,"ConvertOOoTargetToPDFTarget":false,"ExportLinksRelativeFsys":false,"ExportBookmarksToPDFDestination":false,"OpenBookmarkLevels":-1,"PDFViewSelection":0,"PDFDispatcherURL":"","ExportFormFields":false,"SelectPdfVersion":0,"CompressMode":1,"UseTransitionEffects":false,"IsSkipEmptyPages":false,"IsAddStream":false,"EmbedStandardFonts":false}',
+                '--outdir', temp_output_dir,
+                word_path
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+            
+            if result.returncode == 0:
+                base_name = os.path.splitext(os.path.basename(word_path))[0]
+                temp_pdf = os.path.join(temp_output_dir, f"{base_name}.pdf")
+                
+                if os.path.exists(temp_pdf):
+                    shutil.move(temp_pdf, output_path)
+                    print("Advanced LibreOffice conversion succeeded")
+                    return True
+            
+            print(f"Advanced LibreOffice conversion failed: {result.stderr}")
+            return False
+            
+        except Exception as e:
+            print(f"Advanced LibreOffice conversion error: {e}")
+            return False
+    
+    def _convert_with_libreoffice_basic(self, libreoffice_cmd: str, word_path: str, temp_output_dir: str, output_path: str) -> bool:
+        """Basic LibreOffice conversion as fallback"""
+        try:
+            cmd = [
+                libreoffice_cmd,
+                '--headless',
+                '--convert-to', 'pdf:writer_pdf_Export',
                 '--outdir', temp_output_dir,
                 word_path
             ]
@@ -253,21 +306,19 @@ class WordToPDFConverter:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             
             if result.returncode == 0:
-                # Find the generated PDF file
                 base_name = os.path.splitext(os.path.basename(word_path))[0]
                 temp_pdf = os.path.join(temp_output_dir, f"{base_name}.pdf")
                 
                 if os.path.exists(temp_pdf):
                     shutil.move(temp_pdf, output_path)
-                    shutil.rmtree(temp_output_dir, ignore_errors=True)
+                    print("Basic LibreOffice conversion succeeded")
                     return True
             
-            print(f"LibreOffice conversion failed: {result.stderr}")
-            shutil.rmtree(temp_output_dir, ignore_errors=True)
+            print(f"Basic LibreOffice conversion failed: {result.stderr}")
             return False
             
         except Exception as e:
-            print(f"LibreOffice conversion error: {e}")
+            print(f"Basic LibreOffice conversion error: {e}")
             return False
     
     def _convert_with_pandoc(self, word_path: str, output_path: str) -> bool:
