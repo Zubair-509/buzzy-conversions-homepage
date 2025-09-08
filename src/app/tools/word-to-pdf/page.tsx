@@ -59,16 +59,19 @@ export default function WordToPdfPage() {
       const response = await fetch(`/api/status/${conversionId}`);
       const result = await response.json();
 
-      if (result.success) {
+      if (result.success && result.status === 'completed') {
         setConversionStatus('success');
         setDownloadUrl(result.download_url);
         setConversionMethod(result.method);
       } else if (result.status === 'processing') {
         // Continue polling
         setTimeout(() => pollConversionStatus(conversionId), 2000);
-      } else {
+      } else if (result.status === 'failed') {
         setConversionStatus('error');
         setErrorMessage(result.error || 'Conversion failed');
+      } else {
+        // Handle any other status or continue polling for safety
+        setTimeout(() => pollConversionStatus(conversionId), 2000);
       }
     } catch (error) {
       console.error('Status polling error:', error);

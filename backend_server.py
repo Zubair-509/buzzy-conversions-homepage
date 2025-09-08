@@ -262,23 +262,81 @@ class APIHandler(BaseHTTPRequestHandler):
             with open(pdf_temp_path, 'wb') as f:
                 f.write(pdf_file_content)
 
+            # Initialize conversion storage entry
+            conversion_storage[conversion_id] = {
+                'conversion_id': conversion_id,
+                'success': False,
+                'status': 'processing',
+                'filename': None,
+                'download_url': None,
+                'error': None,
+                'metadata': {},
+                'method': 'pdf-to-word'
+            }
+
             # Start conversion in a background thread
             def convert_async():
                 try:
                     result = convert_pdf_file(pdf_temp_path, temp_dir)
                     result['conversion_id'] = conversion_id
-                    conversion_storage[conversion_id] = result
+
+                    if result.get('success'):
+                        base_name = os.path.splitext(pdf_filename)[0]
+                        output_filename = f"{conversion_id}_{base_name}_converted.docx"
+                        final_output_path = os.path.join(temp_dir, output_filename)
+
+                        if os.path.exists(result['output_path']):
+                            shutil.move(result['output_path'], final_output_path)
+                            result['output_path'] = final_output_path
+                            result['filename'] = output_filename
+                        else:
+                            # Handle case where output path is not as expected
+                            result['filename'] = os.path.basename(result.get('output_path', 'unknown_output.docx'))
+
+                    # Update with successful result
+                    conversion_storage[conversion_id].update({
+                        'success': True,
+                        'status': 'completed',
+                        'filename': result.get('filename'),
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
+                        'error': None,
+                        'metadata': result.get('metadata', {}),
+                        'method': result.get('method', 'pdf-to-word')
+                    })
+                    print(f"Updated result for {conversion_id} in conversion_storage")
 
                     # Clean up input file
-                    if os.path.exists(pdf_temp_path):
+                    try:
                         os.remove(pdf_temp_path)
+                    except:
+                        pass
 
                 except Exception as e:
-                    conversion_storage[conversion_id] = {
-                        'success': False,
-                        'error': f'Conversion failed: {str(e)}',
-                        'conversion_id': conversion_id
-                    }
+                    print(f"Async conversion error for {conversion_id}: {e}")
+                    # Update with error result
+                    if conversion_id in conversion_storage:
+                        conversion_storage[conversion_id].update({
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'Conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'pdf-to-word'
+                        })
+                    else:
+                        # Store error result if not already in storage
+                        conversion_storage[conversion_id] = {
+                            'conversion_id': conversion_id,
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'Conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'pdf-to-word'
+                        }
+                    print(f"Updated error result for {conversion_id} in conversion_storage")
 
             # Start background conversion
             thread = threading.Thread(target=convert_async)
@@ -388,6 +446,18 @@ class APIHandler(BaseHTTPRequestHandler):
             with open(pdf_temp_path, 'wb') as f:
                 f.write(pdf_file_content)
 
+            # Initialize conversion storage entry
+            conversion_storage[conversion_id] = {
+                'conversion_id': conversion_id,
+                'success': False,
+                'status': 'processing',
+                'filename': None,
+                'download_url': None,
+                'error': None,
+                'metadata': {},
+                'method': 'pdf-to-powerpoint'
+            }
+
             # Start conversion in a background thread
             def convert_async():
                 try:
@@ -404,9 +474,22 @@ class APIHandler(BaseHTTPRequestHandler):
                             shutil.move(result['output_path'], final_output_path)
                             result['output_path'] = final_output_path
                             result['filename'] = output_filename
+                        else:
+                            result['filename'] = os.path.basename(result.get('output_path', 'unknown_output.pptx'))
 
                     result['conversion_id'] = conversion_id
-                    conversion_storage[conversion_id] = result
+
+                    # Update with successful result
+                    conversion_storage[conversion_id].update({
+                        'success': True,
+                        'status': 'completed',
+                        'filename': result.get('filename'),
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
+                        'error': None,
+                        'metadata': result.get('metadata', {}),
+                        'method': result.get('method', 'pdf-to-powerpoint')
+                    })
+                    print(f"Updated result for {conversion_id} in conversion_storage")
 
                     # Clean up input file
                     try:
@@ -415,12 +498,31 @@ class APIHandler(BaseHTTPRequestHandler):
                         pass
 
                 except Exception as e:
-                    error_result = {
-                        'success': False,
-                        'error': f'PowerPoint conversion failed: {str(e)}',
-                        'conversion_id': conversion_id
-                    }
-                    conversion_storage[conversion_id] = error_result
+                    print(f"Async conversion error for {conversion_id}: {e}")
+                    # Update with error result
+                    if conversion_id in conversion_storage:
+                        conversion_storage[conversion_id].update({
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'PowerPoint conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'pdf-to-powerpoint'
+                        })
+                    else:
+                        # Store error result if not already in storage
+                        conversion_storage[conversion_id] = {
+                            'conversion_id': conversion_id,
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'PowerPoint conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'pdf-to-powerpoint'
+                        }
+                    print(f"Updated error result for {conversion_id} in conversion_storage")
 
             # Start background conversion
             thread = threading.Thread(target=convert_async)
@@ -522,6 +624,18 @@ class APIHandler(BaseHTTPRequestHandler):
             with open(pdf_temp_path, 'wb') as f:
                 f.write(pdf_file_content)
 
+            # Initialize conversion storage entry
+            conversion_storage[conversion_id] = {
+                'conversion_id': conversion_id,
+                'success': False,
+                'status': 'processing',
+                'filename': None,
+                'download_url': None,
+                'error': None,
+                'metadata': {},
+                'method': 'pdf-to-excel'
+            }
+
             # Start conversion in a background thread
             def convert_async():
                 try:
@@ -538,9 +652,22 @@ class APIHandler(BaseHTTPRequestHandler):
                             shutil.move(result['output_path'], final_output_path)
                             result['output_path'] = final_output_path
                             result['filename'] = output_filename
+                        else:
+                            result['filename'] = os.path.basename(result.get('output_path', 'unknown_output.xlsx'))
 
                     result['conversion_id'] = conversion_id
-                    conversion_storage[conversion_id] = result
+
+                    # Update with successful result
+                    conversion_storage[conversion_id].update({
+                        'success': True,
+                        'status': 'completed',
+                        'filename': result.get('filename'),
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
+                        'error': None,
+                        'metadata': result.get('metadata', {}),
+                        'method': result.get('method', 'pdf-to-excel')
+                    })
+                    print(f"Updated result for {conversion_id} in conversion_storage")
 
                     # Clean up input file
                     try:
@@ -549,12 +676,31 @@ class APIHandler(BaseHTTPRequestHandler):
                         pass
 
                 except Exception as e:
-                    error_result = {
-                        'success': False,
-                        'error': f'Excel conversion failed: {str(e)}',
-                        'conversion_id': conversion_id
-                    }
-                    conversion_storage[conversion_id] = error_result
+                    print(f"Async conversion error for {conversion_id}: {e}")
+                    # Update with error result
+                    if conversion_id in conversion_storage:
+                        conversion_storage[conversion_id].update({
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'Excel conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'pdf-to-excel'
+                        })
+                    else:
+                        # Store error result if not already in storage
+                        conversion_storage[conversion_id] = {
+                            'conversion_id': conversion_id,
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'Excel conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'pdf-to-excel'
+                        }
+                    print(f"Updated error result for {conversion_id} in conversion_storage")
 
             # Start background conversion
             thread = threading.Thread(target=convert_async)
@@ -674,9 +820,14 @@ class APIHandler(BaseHTTPRequestHandler):
 
             # Initialize conversion storage entry immediately
             conversion_storage[conversion_id] = {
+                'conversion_id': conversion_id,
                 'success': False,
                 'status': 'processing',
-                'conversion_id': conversion_id
+                'filename': None,
+                'download_url': None,
+                'error': None,
+                'metadata': {},
+                'method': 'pdf-to-jpg'
             }
 
             # Start conversion in a background thread
@@ -708,9 +859,21 @@ class APIHandler(BaseHTTPRequestHandler):
                             shutil.move(result['output_path'], final_output_path)
                             result['output_path'] = final_output_path
                             result['filename'] = output_filename
+                        else:
+                            result['filename'] = os.path.basename(result.get('output_path', 'unknown_output.jpg'))
 
                     result['conversion_id'] = conversion_id
-                    conversion_storage[conversion_id] = result
+
+                    # Update with successful result
+                    conversion_storage[conversion_id].update({
+                        'success': True,
+                        'status': 'completed',
+                        'filename': result.get('filename'),
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
+                        'error': None,
+                        'metadata': result.get('metadata', {}),
+                        'method': result.get('method', 'pdf-to-jpg')
+                    })
                     print(f"Stored conversion result for {conversion_id}")
 
                     # Clean up input file
@@ -721,12 +884,30 @@ class APIHandler(BaseHTTPRequestHandler):
 
                 except Exception as e:
                     print(f"Conversion error for {conversion_id}: {str(e)}")
-                    error_result = {
-                        'success': False,
-                        'error': f'JPG conversion failed: {str(e)}',
-                        'conversion_id': conversion_id
-                    }
-                    conversion_storage[conversion_id] = error_result
+                    # Update with error result
+                    if conversion_id in conversion_storage:
+                        conversion_storage[conversion_id].update({
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'JPG conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'pdf-to-jpg'
+                        })
+                    else:
+                        # Store error result if not already in storage
+                        conversion_storage[conversion_id] = {
+                            'conversion_id': conversion_id,
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'JPG conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'pdf-to-jpg'
+                        }
+                    print(f"Stored conversion result for {conversion_id}")
 
             # Start background conversion
             thread = threading.Thread(target=convert_async)
@@ -816,17 +997,29 @@ class APIHandler(BaseHTTPRequestHandler):
             with open(word_temp_path, 'wb') as f:
                 f.write(word_file_content)
 
+            # Initialize conversion storage entry
+            conversion_storage[conversion_id] = {
+                'conversion_id': conversion_id,
+                'success': False,
+                'status': 'processing',
+                'filename': None,
+                'download_url': None,
+                'error': None,
+                'metadata': {},
+                'method': 'word-to-pdf'
+            }
+
             def convert_async():
                 try:
                     print(f"Starting async conversion for {conversion_id}")
                     result = word_to_pdf_converter.convert_word_to_pdf(word_temp_path)
                     print(f"Conversion result for {conversion_id}: {result}")
-                    
+
                     if result.get('success'):
                         base_name = os.path.splitext(word_filename)[0]
                         output_filename = f"{conversion_id}_{base_name}_converted.pdf"
                         final_output_path = os.path.join(temp_dir, output_filename)
-                        
+
                         try:
                             if os.path.exists(result['output_path']):
                                 print(f"Moving file from {result['output_path']} to {final_output_path}")
@@ -836,32 +1029,59 @@ class APIHandler(BaseHTTPRequestHandler):
                                 print(f"File successfully moved to {final_output_path}")
                             else:
                                 print(f"Warning: Output file {result['output_path']} does not exist")
+                                result['filename'] = os.path.basename(result.get('output_path', 'unknown_output.pdf'))
                         except Exception as move_error:
                             print(f"Error moving file: {move_error}")
-                            # Keep original path if move fails
-                            result['filename'] = os.path.basename(result['output_path'])
-                    
+                            result['filename'] = os.path.basename(result.get('output_path', 'unknown_output.pdf'))
+
                     result['conversion_id'] = conversion_id
-                    conversion_storage[conversion_id] = result
+
+                    # Update with successful result
+                    conversion_storage[conversion_id].update({
+                        'success': True,
+                        'status': 'completed',
+                        'filename': result.get('filename'),
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
+                        'error': None,
+                        'metadata': result.get('metadata', {}),
+                        'method': result.get('method', 'word-to-pdf')
+                    })
                     print(f"Stored result for {conversion_id} in conversion_storage")
-                    
+
                     # Clean up input file
                     try:
                         os.remove(word_temp_path)
                         print(f"Cleaned up temp file {word_temp_path}")
                     except:
                         pass
-                        
+
                 except Exception as e:
                     print(f"Exception in convert_async for {conversion_id}: {str(e)}")
-                    error_result = {
-                        'success': False,
-                        'error': f'Word to PDF conversion failed: {str(e)}',
-                        'conversion_id': conversion_id
-                    }
-                    conversion_storage[conversion_id] = error_result
+                    # Update with error result
+                    if conversion_id in conversion_storage:
+                        conversion_storage[conversion_id].update({
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'Word to PDF conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'word-to-pdf'
+                        })
+                    else:
+                        # Store error result if not already in storage
+                        conversion_storage[conversion_id] = {
+                            'conversion_id': conversion_id,
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'Word to PDF conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'word-to-pdf'
+                        }
                     print(f"Stored error result for {conversion_id}")
-                    
+
                 print(f"Async conversion completed for {conversion_id}. Available conversions: {list(conversion_storage.keys())}")
 
             thread = threading.Thread(target=convert_async)
