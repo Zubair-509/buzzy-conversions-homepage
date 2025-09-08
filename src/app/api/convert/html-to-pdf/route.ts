@@ -6,11 +6,17 @@ export async function POST(request: NextRequest) {
     // Get the form data from the request
     const formData = await request.formData();
     
-    // Forward the request to the Python backend
+    // Forward the request to the Python backend with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+    
     const backendResponse = await fetch('http://localhost:8000/api/convert/html-to-pdf', {
       method: 'POST',
       body: formData,
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
 
     if (!backendResponse.ok) {
       throw new Error(`Backend responded with status: ${backendResponse.status}`);

@@ -191,11 +191,15 @@ class APIHandler(BaseHTTPRequestHandler):
 
     def _send_json_response(self, data, status_code=200):
         """Helper to send JSON responses"""
-        self.send_response(status_code)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+        try:
+            self.send_response(status_code)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode())
+        except (BrokenPipeError, ConnectionResetError):
+            # Client disconnected, ignore the error
+            pass
 
     def _send_error_response(self, status_code, message):
         """Helper to send error responses"""
@@ -303,7 +307,11 @@ class APIHandler(BaseHTTPRequestHandler):
                     "message": "HTML to PDF conversion started"
                 }
 
-                self._send_json_response(response_data, 202)
+                try:
+                    self._send_json_response(response_data, 202)
+                except (BrokenPipeError, ConnectionResetError):
+                    # Client disconnected, but continue with background conversion
+                    pass
                 return
 
             elif self.path == '/api/convert/pdf-to-word':
