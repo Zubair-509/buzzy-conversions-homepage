@@ -53,9 +53,12 @@ class APIHandler(BaseHTTPRequestHandler):
             path_parts = parsed_path.path.split('/')
             if len(path_parts) >= 4:
                 conversion_id = path_parts[3]
+                print(f"Status check for conversion {conversion_id}")
+                print(f"Available conversions: {list(conversion_storage.keys())}")
                 
                 if conversion_id in conversion_storage:
                     result = conversion_storage[conversion_id]
+                    print(f"Found conversion result: {result}")
                     
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
@@ -65,16 +68,18 @@ class APIHandler(BaseHTTPRequestHandler):
                     status_response = {
                         'conversion_id': conversion_id,
                         'success': result.get('success', False),
-                        'status': 'completed' if result.get('success') else ('failed' if 'error' in result else 'processing'),
+                        'status': result.get('status', 'completed' if result.get('success') else ('failed' if 'error' in result else 'processing')),
                         'filename': result.get('filename'),
-                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') else None,
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
                         'error': result.get('error'),
-                        'metadata': result.get('metadata', {})
+                        'metadata': result.get('metadata', {}),
+                        'method': result.get('method')
                     }
                     self.wfile.write(json.dumps(status_response).encode())
                     return
                 
             # Conversion not found
+            print(f"Conversion {conversion_id} not found in storage")
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -660,9 +665,17 @@ class APIHandler(BaseHTTPRequestHandler):
             with open(pdf_temp_path, 'wb') as f:
                 f.write(pdf_file_content)
             
+            # Initialize conversion storage entry immediately
+            conversion_storage[conversion_id] = {
+                'success': False,
+                'status': 'processing',
+                'conversion_id': conversion_id
+            }
+            
             # Start conversion in a background thread
             def convert_async():
                 try:
+                    print(f"Starting background conversion for {conversion_id}")
                     result = jpg_converter.convert_pdf_to_jpg(
                         pdf_temp_path,
                         output_format=conversion_options['output_format'],
@@ -670,6 +683,8 @@ class APIHandler(BaseHTTPRequestHandler):
                         quality=conversion_options['quality'],
                         page_range=conversion_options['page_range']
                     )
+                    
+                    print(f"Conversion result for {conversion_id}: {result}")
                     
                     if result['success']:
                         # Generate output filename
@@ -689,6 +704,7 @@ class APIHandler(BaseHTTPRequestHandler):
                     
                     result['conversion_id'] = conversion_id
                     conversion_storage[conversion_id] = result
+                    print(f"Stored conversion result for {conversion_id}")
                     
                     # Clean up input file
                     try:
@@ -697,6 +713,7 @@ class APIHandler(BaseHTTPRequestHandler):
                         pass
                         
                 except Exception as e:
+                    print(f"Conversion error for {conversion_id}: {str(e)}")
                     error_result = {
                         'success': False,
                         'error': f'JPG conversion failed: {str(e)}',

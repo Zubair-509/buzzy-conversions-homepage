@@ -158,8 +158,8 @@ export default function PDFToJPGPage() {
 
       if (response.ok && result.success) {
         setConversionProgress(20);
-        // Start polling for conversion status
-        pollConversionStatus(result.conversion_id);
+        // Start polling for conversion status with a small delay
+        setTimeout(() => pollConversionStatus(result.conversion_id), 500);
       } else {
         setError(result.error || 'Conversion failed');
         setIsConverting(false);
