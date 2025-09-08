@@ -18,6 +18,7 @@ import io
 from pdf_to_word_converter import convert_pdf_file
 from pdf_to_powerpoint_converter import PDFToPowerPointConverter
 from pdf_to_excel_converter import PDFToExcelConverter
+from pdf_to_jpg_converter import PDFToJPGConverter
 
 # Global storage for conversion results
 conversion_storage = {}
@@ -26,6 +27,7 @@ temp_dir = tempfile.mkdtemp()
 # Initialize converters
 powerpoint_converter = PDFToPowerPointConverter(temp_dir)
 excel_converter = PDFToExcelConverter(temp_dir)
+jpg_converter = PDFToJPGConverter(temp_dir)
 
 class APIHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -42,7 +44,7 @@ class APIHandler(BaseHTTPRequestHandler):
                 'service': 'python-backend',
                 'timestamp': datetime.now().isoformat(),
                 'version': '2.0.0',
-                'features': ['pdf-to-word-conversion', 'advanced-formatting', 'image-preservation']
+                'features': ['pdf-to-word-conversion', 'pdf-to-powerpoint-conversion', 'pdf-to-excel-conversion', 'pdf-to-jpg-conversion', 'advanced-formatting', 'image-preservation']
             }
             self.wfile.write(json.dumps(response).encode())
             
@@ -126,6 +128,12 @@ class APIHandler(BaseHTTPRequestHandler):
                 content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             elif filename.endswith('.xlsx'):
                 content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
+                content_type = 'image/jpeg'
+            elif filename.endswith('.png'):
+                content_type = 'image/png'
+            elif filename.endswith('.zip'):
+                content_type = 'application/zip'
             else:
                 content_type = 'application/octet-stream'
             
@@ -156,6 +164,8 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_pdf_to_powerpoint_conversion()
         elif parsed_path.path == '/api/convert/pdf-to-excel':
             self.handle_pdf_to_excel_conversion()
+        elif parsed_path.path == '/api/convert/pdf-to-jpg':
+            self.handle_pdf_to_jpg_conversion()
         else:
             # Handle other POST requests
             self.send_response(404)
@@ -563,6 +573,166 @@ class APIHandler(BaseHTTPRequestHandler):
             response = {'error': f'Conversion failed: {str(e)}'}
             self.wfile.write(json.dumps(response).encode())
 
+    def handle_pdf_to_jpg_conversion(self):
+        """Handle PDF to JPG conversion requests"""
+        try:
+            # Parse multipart form data (reuse same logic as other conversions)
+            content_type = self.headers.get('Content-Type', '')
+            if not content_type.startswith('multipart/form-data'):
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response = {'error': 'Content-Type must be multipart/form-data'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            # Get content length
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response = {'error': 'No file uploaded'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            # Read and parse multipart data
+            body = self.rfile.read(content_length)
+            boundary = content_type.split('boundary=')[1].encode()
+            parts = body.split(b'--' + boundary)
+            
+            pdf_file_content = None
+            pdf_filename = None
+            conversion_options = {
+                'output_format': 'jpg',
+                'dpi': 300,
+                'quality': 95,
+                'page_range': 'all'
+            }
+            
+            for part in parts:
+                if b'Content-Disposition' in part:
+                    lines = part.split(b'\r\n')
+                    for line in lines:
+                        if b'Content-Disposition' in line:
+                            if b'filename=' in line:
+                                filename_part = line.split(b'filename=')[1]
+                                pdf_filename = filename_part.strip(b'"').decode('utf-8')
+                            elif b'name=' in line:
+                                # Parse form fields for conversion options
+                                name_part = line.split(b'name=')[1].strip(b'"').decode('utf-8')
+                                if name_part in ['format', 'quality', 'dpi', 'pageRange']:
+                                    value = part.split(b'\r\n\r\n', 1)[1].strip(b'\r\n').decode('utf-8')
+                                    if name_part == 'format':
+                                        conversion_options['output_format'] = value
+                                    elif name_part == 'quality':
+                                        conversion_options['quality'] = int(value) if value.isdigit() else 95
+                                    elif name_part == 'dpi':
+                                        conversion_options['dpi'] = int(value) if value.isdigit() else 300
+                                    elif name_part == 'pageRange':
+                                        conversion_options['page_range'] = value
+                    
+                    # Extract file content
+                    if b'filename=' in part and b'\r\n\r\n' in part:
+                        pdf_file_content = part.split(b'\r\n\r\n', 1)[1]
+                        if pdf_file_content.endswith(b'\r\n'):
+                            pdf_file_content = pdf_file_content[:-2]
+            
+            if not pdf_file_content or not pdf_filename:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response = {'error': 'No valid PDF file found in request'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            # Generate unique ID for this conversion
+            conversion_id = str(uuid.uuid4())
+            
+            # Save uploaded PDF temporarily
+            pdf_temp_path = os.path.join(temp_dir, f"{conversion_id}_{pdf_filename}")
+            with open(pdf_temp_path, 'wb') as f:
+                f.write(pdf_file_content)
+            
+            # Start conversion in a background thread
+            def convert_async():
+                try:
+                    result = jpg_converter.convert_pdf_to_jpg(
+                        pdf_temp_path,
+                        output_format=conversion_options['output_format'],
+                        dpi=conversion_options['dpi'],
+                        quality=conversion_options['quality'],
+                        page_range=conversion_options['page_range']
+                    )
+                    
+                    if result['success']:
+                        # Generate output filename
+                        base_name = os.path.splitext(pdf_filename)[0]
+                        if result.get('pages_converted', 1) == 1:
+                            output_filename = f"{conversion_id}_{base_name}_converted.{conversion_options['output_format']}"
+                        else:
+                            output_filename = f"{conversion_id}_{base_name}_converted_pages.zip"
+                        
+                        final_output_path = os.path.join(temp_dir, output_filename)
+                        
+                        # Move converted file to final location
+                        if os.path.exists(result['output_path']):
+                            shutil.move(result['output_path'], final_output_path)
+                            result['output_path'] = final_output_path
+                            result['filename'] = output_filename
+                    
+                    result['conversion_id'] = conversion_id
+                    conversion_storage[conversion_id] = result
+                    
+                    # Clean up input file
+                    try:
+                        os.remove(pdf_temp_path)
+                    except:
+                        pass
+                        
+                except Exception as e:
+                    error_result = {
+                        'success': False,
+                        'error': f'JPG conversion failed: {str(e)}',
+                        'conversion_id': conversion_id
+                    }
+                    conversion_storage[conversion_id] = error_result
+            
+            # Start background conversion
+            thread = threading.Thread(target=convert_async)
+            thread.daemon = True
+            thread.start()
+            
+            # Send immediate response with conversion ID
+            self.send_response(202)  # Accepted
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                'success': True,
+                'conversion_id': conversion_id,
+                'message': 'PDF to JPG conversion started',
+                'status_url': f'/api/status/{conversion_id}'
+            }
+            self.wfile.write(json.dumps(response).encode())
+            
+        except Exception as e:
+            print(f"Error in PDF to JPG conversion: {e}")
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'error': f'Conversion failed: {str(e)}'}
+            self.wfile.write(json.dumps(response).encode())
+
     def log_message(self, format, *args):
         # Custom logging format
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {format % args}")
@@ -577,6 +747,7 @@ def run_server(port=8000):
     print("  POST /api/convert/pdf-to-word - PDF to Word conversion")
     print("  POST /api/convert/pdf-to-powerpoint - PDF to PowerPoint conversion")
     print("  POST /api/convert/pdf-to-excel - PDF to Excel conversion")
+    print("  POST /api/convert/pdf-to-jpg - PDF to JPG conversion")
     print("  GET /api/status/{id} - Check conversion status")
     print("  GET /api/download/{id}/{filename} - Download converted files")
     
