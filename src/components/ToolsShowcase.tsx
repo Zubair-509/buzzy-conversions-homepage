@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Grid2x2, 
   ZoomIn, 
@@ -25,8 +25,12 @@ import {
   PanelRight,
   LayoutPanelLeft,
   LassoSelect,
-  TabletSmartphone
+  TabletSmartphone,
+  FileText // Ensure FileText is imported if used in the new card
 } from "lucide-react";
+
+// Import router if it's used for navigation
+import { useRouter } from 'next/navigation'; 
 
 interface Tool {
   id: string;
@@ -82,6 +86,23 @@ const tools: Tool[] = [
     description: "Add password protection and security to your PDFs",
     icon: PanelTop,
     category: "pdf"
+  },
+  {
+    id: "word-to-pdf", // Added route for Word to PDF
+    name: "Word to PDF",
+    description: "Convert Word documents to PDF format while preserving formatting and layout",
+    icon: FileText, // Assuming FileText is used for this tool
+    category: "pdf",
+    route: "/tools/word-to-pdf"
+  },
+  {
+    id: "powerpoint-to-pdf", // Added new tool ID
+    name: "PowerPoint to PDF",
+    description: "Convert PowerPoint presentations to PDF while preserving slides, images, and templates",
+    icon: FileText, // Assuming FileText is used for this tool as well
+    category: "pdf",
+    route: "/tools/powerpoint-to-pdf", // Added route for PowerPoint to PDF
+    badge: "new" // Optional badge
   },
   {
     id: "image-resizer",
@@ -153,6 +174,7 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(cardRef, { once: true, margin: "-20px" });
   const IconComponent = tool.icon;
+  const router = useRouter(); // Initialize router
 
   return (
     <motion.div
@@ -165,7 +187,16 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
         ease: [0.21, 0.47, 0.32, 0.98]
       }}
     >
-      <Card className="group glass glass-hover neon-glow-hover animate-border-glow cursor-pointer h-full transition-all duration-300 border-primary/20 hover:border-primary/60">
+      <Card className="group glass glass-hover neon-glow-hover animate-border-glow cursor-pointer h-full transition-all duration-300 border-primary/20 hover:border-primary/60"
+        onClick={() => {
+          if (tool.route) {
+            router.push(tool.route);
+          } else {
+            console.log(`Opening ${tool.name}`);
+            // Fallback or default action if no route is specified
+          }
+        }}
+      >
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-4">
             <motion.div
@@ -192,7 +223,7 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
               </Badge>
             )}
           </div>
-          
+
           <div className="space-y-2 mb-4">
             <h3 className="font-display font-semibold text-lg text-foreground group-hover:text-gradient-neon transition-all duration-300">
               {tool.name}
@@ -201,13 +232,17 @@ function ToolCard({ tool, index }: { tool: Tool; index: number }) {
               {tool.description}
             </p>
           </div>
-          
+
           <Button 
             variant="outline" 
             className="w-full glass glass-hover border-primary/30 hover:border-primary/60 hover:bg-gradient-neon hover:text-white transition-all duration-300 ripple group-hover:neon-glow"
-            onClick={() => {
-              // Handle tool navigation or modal opening
-              console.log(`Opening ${tool.name}`);
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card's onClick from firing
+              if (tool.route) {
+                router.push(tool.route);
+              } else {
+                console.log(`Opening ${tool.name}`);
+              }
             }}
           >
             <span className="relative z-10">Open Tool</span>
@@ -226,26 +261,26 @@ export default function ToolsShowcase() {
 
   // Debounce search query
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
     }, 300);
-    
+
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   // Filter tools based on active tab and search query
   const filteredTools = useMemo(() => {
     let filtered = tools.filter(tool => tool.category === activeTab);
-    
+
     if (debouncedSearchQuery) {
       filtered = filtered.filter(tool =>
         tool.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         tool.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
       );
     }
-    
+
     return filtered;
   }, [activeTab, debouncedSearchQuery]);
 
@@ -320,7 +355,7 @@ export default function ToolsShowcase() {
                   Image Tools
                 </TabsTrigger>
               </TabsList>
-              
+
               <div className="relative max-w-sm w-full">
                 <ListFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary w-4 h-4 neon-glow" />
                 <Input

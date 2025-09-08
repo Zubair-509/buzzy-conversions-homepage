@@ -20,6 +20,7 @@ from pdf_to_powerpoint_converter import PDFToPowerPointConverter
 from pdf_to_excel_converter import PDFToExcelConverter
 from pdf_to_jpg_converter import PDFToJPGConverter
 from word_to_pdf_converter import WordToPDFConverter # Import the new converter
+from powerpoint_to_pdf_converter import PowerPointToPDFConverter # Import PowerPoint to PDF converter
 
 # Global storage for conversion results
 conversion_storage = {}
@@ -30,6 +31,7 @@ powerpoint_converter = PDFToPowerPointConverter(temp_dir)
 excel_converter = PDFToExcelConverter(temp_dir)
 jpg_converter = PDFToJPGConverter(temp_dir)
 word_to_pdf_converter = WordToPDFConverter(temp_dir) # Initialize the new converter
+powerpoint_to_pdf_converter = PowerPointToPDFConverter(temp_dir) # Initialize PowerPoint to PDF converter
 
 class APIHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -46,7 +48,7 @@ class APIHandler(BaseHTTPRequestHandler):
                 'service': 'python-backend',
                 'timestamp': datetime.now().isoformat(),
                 'version': '2.0.0',
-                'features': ['pdf-to-word-conversion', 'pdf-to-powerpoint-conversion', 'pdf-to-excel-conversion', 'pdf-to-jpg-conversion', 'word-to-pdf-conversion', 'advanced-formatting', 'image-preservation']
+                'features': ['pdf-to-word-conversion', 'pdf-to-powerpoint-conversion', 'pdf-to-excel-conversion', 'pdf-to-jpg-conversion', 'word-to-pdf-conversion', 'powerpoint-to-pdf-conversion', 'advanced-formatting', 'image-preservation']
             }
             self.wfile.write(json.dumps(response).encode())
 
@@ -189,6 +191,8 @@ class APIHandler(BaseHTTPRequestHandler):
             self.handle_pdf_to_jpg_conversion()
         elif parsed_path.path == '/api/convert/word-to-pdf': # Added handler for Word to PDF
             self.handle_word_to_pdf_conversion()
+        elif parsed_path.path == '/api/convert/powerpoint-to-pdf': # Added handler for PowerPoint to PDF
+            self.handle_powerpoint_to_pdf_conversion()
         else:
             # Handle other POST requests
             self.send_response(404)
@@ -1121,6 +1125,178 @@ class APIHandler(BaseHTTPRequestHandler):
             response = {'error': f'Conversion failed: {str(e)}'}
             self.wfile.write(json.dumps(response).encode())
 
+    def handle_powerpoint_to_pdf_conversion(self):
+        """Handle PowerPoint to PDF conversion requests"""
+        try:
+            content_type = self.headers.get('Content-Type', '')
+            if not content_type.startswith('multipart/form-data'):
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                response = {'error': 'Content-Type must be multipart/form-data'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                response = {'error': 'No file uploaded'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+
+            body = self.rfile.read(content_length)
+            boundary = content_type.split('boundary=')[1].encode()
+            parts = body.split(b'--' + boundary)
+
+            pptx_file_content = None
+            pptx_filename = None
+
+            for part in parts:
+                if b'Content-Disposition' in part and b'filename=' in part:
+                    lines = part.split(b'\r\n')
+                    for line in lines:
+                        if b'Content-Disposition' in line:
+                            if b'filename=' in line:
+                                filename_part = line.split(b'filename=')[1]
+                                pptx_filename = filename_part.strip(b'"').decode('utf-8')
+                                break
+                    if b'\r\n\r\n' in part:
+                        pptx_file_content = part.split(b'\r\n\r\n', 1)[1]
+                        if pptx_file_content.endswith(b'\r\n'):
+                            pptx_file_content = pptx_file_content[:-2]
+                        break
+
+            if not pptx_file_content or not pptx_filename:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                response = {'error': 'No valid PowerPoint file found in request'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+
+            conversion_id = str(uuid.uuid4())
+            pptx_temp_path = os.path.join(temp_dir, f"{conversion_id}_{pptx_filename}")
+            with open(pptx_temp_path, 'wb') as f:
+                f.write(pptx_file_content)
+
+            # Initialize conversion storage entry
+            conversion_storage[conversion_id] = {
+                'conversion_id': conversion_id,
+                'success': False,
+                'status': 'processing',
+                'filename': None,
+                'download_url': None,
+                'error': None,
+                'metadata': {},
+                'method': 'powerpoint-to-pdf'
+            }
+
+            def convert_async():
+                try:
+                    print(f"Starting async PowerPoint to PDF conversion for {conversion_id}")
+                    result = powerpoint_to_pdf_converter.convert_powerpoint_to_pdf(pptx_temp_path)
+                    print(f"Conversion result for {conversion_id}: {result}")
+
+                    if result.get('success'):
+                        base_name = os.path.splitext(pptx_filename)[0]
+                        output_filename = f"{conversion_id}_{base_name}_converted.pdf"
+                        final_output_path = os.path.join(temp_dir, output_filename)
+
+                        try:
+                            if os.path.exists(result['output_path']):
+                                print(f"Moving file from {result['output_path']} to {final_output_path}")
+                                shutil.move(result['output_path'], final_output_path)
+                                result['output_path'] = final_output_path
+                                result['filename'] = output_filename
+                                print(f"File successfully moved to {final_output_path}")
+                            else:
+                                print(f"Warning: Output file {result['output_path']} does not exist")
+                                result['filename'] = os.path.basename(result.get('output_path', 'unknown_output.pdf'))
+                        except Exception as move_error:
+                            print(f"Error moving file: {move_error}")
+                            result['filename'] = os.path.basename(result.get('output_path', 'unknown_output.pdf'))
+
+                    result['conversion_id'] = conversion_id
+
+                    # Update with successful result
+                    conversion_storage[conversion_id].update({
+                        'success': result.get('success', True),
+                        'status': 'completed',
+                        'filename': result.get('filename'),
+                        'output_path': result.get('output_path'),
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
+                        'error': None,
+                        'metadata': result.get('metadata', {}),
+                        'method': result.get('method', 'powerpoint-to-pdf')
+                    })
+                    print(f"Stored result for {conversion_id} in conversion_storage")
+
+                    # Clean up input file
+                    try:
+                        os.remove(pptx_temp_path)
+                        print(f"Cleaned up temp file {pptx_temp_path}")
+                    except:
+                        pass
+
+                except Exception as e:
+                    print(f"Exception in convert_async for {conversion_id}: {str(e)}")
+                    # Update with error result
+                    if conversion_id in conversion_storage:
+                        conversion_storage[conversion_id].update({
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'PowerPoint to PDF conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'powerpoint-to-pdf'
+                        })
+                    else:
+                        # Store error result if not already in storage
+                        conversion_storage[conversion_id] = {
+                            'conversion_id': conversion_id,
+                            'success': False,
+                            'status': 'failed',
+                            'filename': None,
+                            'download_url': None,
+                            'error': f'PowerPoint to PDF conversion failed: {str(e)}',
+                            'metadata': {},
+                            'method': 'powerpoint-to-pdf'
+                        }
+                    print(f"Stored error result for {conversion_id}")
+
+                print(f"Async conversion completed for {conversion_id}. Available conversions: {list(conversion_storage.keys())}")
+
+            thread = threading.Thread(target=convert_async)
+            thread.daemon = True
+            thread.start()
+
+            self.send_response(202)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            response = {
+                'success': True,
+                'conversion_id': conversion_id,
+                'message': 'PowerPoint to PDF conversion started',
+                'status_url': f'/api/status/{conversion_id}'
+            }
+            self.wfile.write(json.dumps(response).encode())
+
+        except Exception as e:
+            print(f"Error in PowerPoint to PDF conversion: {e}")
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            response = {'error': f'Conversion failed: {str(e)}'}
+            self.wfile.write(json.dumps(response).encode())
+
     def log_message(self, format, *args):
         # Custom logging format
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {format % args}")
@@ -1137,6 +1313,7 @@ def run_server(port=8000):
     print("  POST /api/convert/pdf-to-excel - PDF to Excel conversion")
     print("  POST /api/convert/pdf-to-jpg - PDF to JPG conversion")
     print("  POST /api/convert/word-to-pdf - Word to PDF conversion") # Added endpoint
+    print("  POST /api/convert/powerpoint-to-pdf - PowerPoint to PDF conversion") # Added endpoint
     print("  GET /api/status/{id} - Check conversion status")
     print("  GET /api/download/{id}/{filename} - Download converted files")
 
