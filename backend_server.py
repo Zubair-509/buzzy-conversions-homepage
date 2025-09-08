@@ -80,7 +80,8 @@ class APIHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(status_response).encode())
                     return
 
-            # Conversion not found
+            # Conversion not found (set default value if not in path)
+            conversion_id = conversion_id if 'conversion_id' in locals() else 'unknown'
             print(f"Conversion {conversion_id} not found in storage")
             self.send_response(404)
             self.send_header('Content-type', 'application/json')

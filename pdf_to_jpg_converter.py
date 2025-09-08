@@ -30,6 +30,8 @@ try:
 except ImportError as e:
     print(f"Warning: Pillow not available - {e}")
     Image = None
+    ImageEnhance = None
+    ImageFilter = None
 
 try:
     import fitz  # PyMuPDF
