@@ -268,16 +268,21 @@ class PDFToJPGConverter:
                 # Save with optimal settings
                 save_kwargs = {
                     'optimize': True,
-                    'progressive': True if output_format.lower() == 'jpg' else False
+                    'progressive': True if output_format.lower() in ['jpg', 'jpeg'] else False
                 }
                 
                 if output_format.lower() in ['jpg', 'jpeg']:
                     save_kwargs['quality'] = quality
                     save_kwargs['subsampling'] = 0
+                    # Use JPEG format for JPG files
+                    format_name = 'JPEG'
                 elif output_format.lower() == 'png':
                     save_kwargs['compress_level'] = 1
+                    format_name = 'PNG'
+                else:
+                    format_name = output_format.upper()
                 
-                enhanced_image.save(output_path, output_format.upper(), **save_kwargs)
+                enhanced_image.save(output_path, format_name, **save_kwargs)
                 converted_files.append({
                     'filename': filename,
                     'path': output_path,
@@ -376,7 +381,16 @@ class PDFToJPGConverter:
             filename = f"{base_name}_converted.{output_format.lower()}"
             output_path = os.path.join(self.output_dir, filename)
             
-            pix.save(output_path)
+            # Save with correct format
+            if output_format.lower() in ['jpg', 'jpeg']:
+                # Convert pixmap to PIL Image for better format control
+                img_data = pix.tobytes("png")
+                pil_image = Image.open(io.BytesIO(img_data))
+                if pil_image.mode != 'RGB':
+                    pil_image = pil_image.convert('RGB')
+                pil_image.save(output_path, 'JPEG', quality=quality, optimize=True)
+            else:
+                pix.save(output_path)
             doc.close()
             
             return {
