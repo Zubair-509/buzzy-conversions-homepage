@@ -26,7 +26,8 @@ import {
   LayoutPanelLeft,
   LassoSelect,
   TabletSmartphone,
-  FileText // Ensure FileText is imported if used in the new card
+  FileText,
+  FileSpreadsheet
 } from "lucide-react";
 
 // Import router if it's used for navigation
