@@ -818,27 +818,51 @@ class APIHandler(BaseHTTPRequestHandler):
 
             def convert_async():
                 try:
+                    print(f"Starting async conversion for {conversion_id}")
                     result = word_to_pdf_converter.convert_word_to_pdf(word_temp_path)
-                    if result['success']:
+                    print(f"Conversion result for {conversion_id}: {result}")
+                    
+                    if result.get('success'):
                         base_name = os.path.splitext(word_filename)[0]
                         output_filename = f"{conversion_id}_{base_name}_converted.pdf"
                         final_output_path = os.path.join(temp_dir, output_filename)
-                        if os.path.exists(result['output_path']):
-                            shutil.move(result['output_path'], final_output_path)
-                            result['output_path'] = final_output_path
-                            result['filename'] = output_filename
+                        
+                        try:
+                            if os.path.exists(result['output_path']):
+                                print(f"Moving file from {result['output_path']} to {final_output_path}")
+                                shutil.move(result['output_path'], final_output_path)
+                                result['output_path'] = final_output_path
+                                result['filename'] = output_filename
+                                print(f"File successfully moved to {final_output_path}")
+                            else:
+                                print(f"Warning: Output file {result['output_path']} does not exist")
+                        except Exception as move_error:
+                            print(f"Error moving file: {move_error}")
+                            # Keep original path if move fails
+                            result['filename'] = os.path.basename(result['output_path'])
+                    
                     result['conversion_id'] = conversion_id
                     conversion_storage[conversion_id] = result
+                    print(f"Stored result for {conversion_id} in conversion_storage")
+                    
+                    # Clean up input file
                     try:
                         os.remove(word_temp_path)
+                        print(f"Cleaned up temp file {word_temp_path}")
                     except:
                         pass
+                        
                 except Exception as e:
-                    conversion_storage[conversion_id] = {
+                    print(f"Exception in convert_async for {conversion_id}: {str(e)}")
+                    error_result = {
                         'success': False,
                         'error': f'Word to PDF conversion failed: {str(e)}',
                         'conversion_id': conversion_id
                     }
+                    conversion_storage[conversion_id] = error_result
+                    print(f"Stored error result for {conversion_id}")
+                    
+                print(f"Async conversion completed for {conversion_id}. Available conversions: {list(conversion_storage.keys())}")
 
             thread = threading.Thread(target=convert_async)
             thread.daemon = True
