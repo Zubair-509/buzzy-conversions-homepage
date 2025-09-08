@@ -7,9 +7,10 @@ export async function GET(
   try {
     const { downloadId, filename } = await params;
     
-    // Forward the request to the Python backend - filename is already URL encoded
+    // Forward the request to the Python backend
     const pythonApiUrl = process.env.PYTHON_API_URL || 'http://localhost:8000';
-    const response = await fetch(`${pythonApiUrl}/api/download/${downloadId}/${encodeURIComponent(filename)}`, {
+    console.log(`Forwarding download request: ${downloadId}/${filename}`);
+    const response = await fetch(`${pythonApiUrl}/api/download/${downloadId}/${filename}`, {
       method: 'GET',
     });
     

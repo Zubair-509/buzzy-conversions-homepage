@@ -98,12 +98,23 @@ class APIHandler(BaseHTTPRequestHandler):
                 download_id = path_parts[3]
                 filename = urllib.parse.unquote(path_parts[4]) if len(path_parts) > 4 else None
 
+                print(f"Download request - ID: {download_id}, Filename: {filename}")
+                print(f"Available files in storage: {list(conversion_storage.keys())}")
+                
                 if download_id in conversion_storage:
                     result = conversion_storage[download_id]
+                    print(f"Found result: {result}")
+                    print(f"Looking for file at: {result.get('output_path', '')}")
+                    print(f"File exists: {os.path.exists(result.get('output_path', ''))}")
+                    
                     if result.get('success') and os.path.exists(result.get('output_path', '')):
                         # Serve the converted file
                         self.serve_file(result['output_path'], result['filename'])
                         return
+                    else:
+                        print(f"File not found or conversion not successful")
+                else:
+                    print(f"Download ID {download_id} not found in storage")
 
             # File not found
             self.send_response(404)
@@ -1038,9 +1049,10 @@ class APIHandler(BaseHTTPRequestHandler):
 
                     # Update with successful result
                     conversion_storage[conversion_id].update({
-                        'success': True,
+                        'success': result.get('success', True),
                         'status': 'completed',
                         'filename': result.get('filename'),
+                        'output_path': result.get('output_path'),
                         'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
                         'error': None,
                         'metadata': result.get('metadata', {}),
