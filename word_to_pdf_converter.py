@@ -97,25 +97,41 @@ class WordToPDFConverter:
             # Method 1: docx2pdf (Windows/Mac optimized)
             if docx2pdf_convert and self._convert_with_docx2pdf(word_path, output_path):
                 print("docx2pdf conversion method succeeded")
+                # Safely get file size
+                file_size = 0
+                try:
+                    if os.path.exists(output_path):
+                        file_size = os.path.getsize(output_path)
+                except Exception as e:
+                    print(f"Warning: Could not get file size: {e}")
+                
                 return {
                     "success": True,
                     "output_path": output_path,
                     "filename": os.path.basename(output_path),
                     "method": "docx2pdf_native",
                     "metadata": metadata,
-                    "file_size": os.path.getsize(output_path)
+                    "file_size": file_size
                 }
             
             # Method 2: LibreOffice command line
             if self._convert_with_libreoffice(word_path, output_path):
                 print("LibreOffice conversion method succeeded")
+                # Safely get file size
+                file_size = 0
+                try:
+                    if os.path.exists(output_path):
+                        file_size = os.path.getsize(output_path)
+                except Exception as e:
+                    print(f"Warning: Could not get file size: {e}")
+                
                 return {
                     "success": True,
                     "output_path": output_path,
                     "filename": os.path.basename(output_path),
                     "method": "libreoffice_headless",
                     "metadata": metadata,
-                    "file_size": os.path.getsize(output_path)
+                    "file_size": file_size
                 }
             
             # Method 3: Pandoc conversion
