@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Upload, 
   FileText, 
@@ -16,6 +20,8 @@ import {
   Loader2, 
   ArrowLeft,
   Code,
+  Globe,
+  FileUp,
   Lock,
   Zap,
   Shield,
@@ -42,17 +48,29 @@ interface ConversionResult {
     file_size?: number;
     input_file_size?: number;
     method?: string;
+    source_url?: string;
   };
 }
 
 export default function HTMLToPDFPage() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState('code');
+  
+  // File upload state
   const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // HTML code state
+  const [htmlCode, setHtmlCode] = useState('');
+  
+  // URL state
+  const [url, setUrl] = useState('');
+  
+  // Common state
   const [isConverting, setIsConverting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [conversionResult, setConversionResult] = useState<ConversionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -118,7 +136,7 @@ export default function HTMLToPDFPage() {
           
           attempts++;
           if (attempts < maxAttempts) {
-            setTimeout(poll, 5000);
+            setTimeout(poll, 3000);
           } else {
             setIsConverting(false);
             toast.error('Conversion timed out. Please try again.');
@@ -134,7 +152,7 @@ export default function HTMLToPDFPage() {
     poll();
   };
 
-  const handleConvert = async () => {
+  const handleConvertFile = async () => {
     if (!file) {
       toast.error('Please select an HTML file first');
       return;
@@ -177,6 +195,92 @@ export default function HTMLToPDFPage() {
     }
   };
 
+  const handleConvertCode = async () => {
+    if (!htmlCode.trim()) {
+      toast.error('Please enter HTML code first');
+      return;
+    }
+
+    setIsConverting(true);
+    setProgress(10);
+    setConversionResult(null);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/convert/html-to-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ html_code: htmlCode }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.conversion_id) {
+        setProgress(30);
+        toast.success('Conversion started! Processing your HTML code...');
+        setTimeout(() => pollConversionStatus(result.conversion_id), 1000);
+      } else {
+        setConversionResult({
+          success: false,
+          error: result.error || 'Failed to start conversion'
+        });
+        setIsConverting(false);
+      }
+    } catch (error) {
+      console.error('Conversion error:', error);
+      setConversionResult({
+        success: false,
+        error: 'Failed to convert HTML to PDF'
+      });
+      setIsConverting(false);
+    }
+  };
+
+  const handleConvertUrl = async () => {
+    if (!url.trim()) {
+      toast.error('Please enter a URL first');
+      return;
+    }
+
+    setIsConverting(true);
+    setProgress(10);
+    setConversionResult(null);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/convert/html-to-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: url }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.conversion_id) {
+        setProgress(30);
+        toast.success('Conversion started! Processing the webpage...');
+        setTimeout(() => pollConversionStatus(result.conversion_id), 1000);
+      } else {
+        setConversionResult({
+          success: false,
+          error: result.error || 'Failed to start conversion'
+        });
+        setIsConverting(false);
+      }
+    } catch (error) {
+      console.error('Conversion error:', error);
+      setConversionResult({
+        success: false,
+        error: 'Failed to convert HTML to PDF'
+      });
+      setIsConverting(false);
+    }
+  };
+
   const handleDownload = () => {
     if (conversionResult?.download_url) {
       const link = document.createElement('a');
@@ -191,6 +295,8 @@ export default function HTMLToPDFPage() {
 
   const resetForm = () => {
     setFile(null);
+    setHtmlCode('');
+    setUrl('');
     setIsConverting(false);
     setConversionResult(null);
     setProgress(0);
@@ -198,6 +304,19 @@ export default function HTMLToPDFPage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const canConvert = () => {
+    if (activeTab === 'file') return file && !isConverting;
+    if (activeTab === 'code') return htmlCode.trim() && !isConverting;
+    if (activeTab === 'url') return url.trim() && !isConverting;
+    return false;
+  };
+
+  const handleConvert = () => {
+    if (activeTab === 'file') return handleConvertFile();
+    if (activeTab === 'code') return handleConvertCode();
+    if (activeTab === 'url') return handleConvertUrl();
   };
 
   return (
@@ -228,7 +347,7 @@ export default function HTMLToPDFPage() {
                 HTML to PDF Converter
               </h1>
               <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Convert your HTML files to PDF format while preserving formatting, layout, images, and styling
+                Convert HTML code, web pages, or HTML files to PDF format with perfect formatting and styling
               </p>
             </div>
           </div>
@@ -240,8 +359,8 @@ export default function HTMLToPDFPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <Card className="border-2 border-primary/10 shadow-xl">
             <CardHeader className="text-center pb-8">
-              <CardTitle className="text-2xl font-display">Upload Your HTML File</CardTitle>
-              <CardDescription>Convert .html and .htm files to PDF format with perfect formatting</CardDescription>
+              <CardTitle className="text-2xl font-display">Convert HTML to PDF</CardTitle>
+              <CardDescription>Choose your preferred method: paste HTML code, enter a URL, or upload an HTML file</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Error Alert */}
@@ -252,31 +371,86 @@ export default function HTMLToPDFPage() {
                 </Alert>
               )}
 
-              {/* Upload Area */}
-              <div
-                className="border-2 border-dashed border-primary/20 rounded-xl p-12 text-center hover:border-primary/40 transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-              >
-                <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">{file ? file.name : 'Drop your HTML file here'}</h3>
-                <p className="text-muted-foreground mb-4">Support for .html and .htm formats up to 50MB</p>
-                <input
-                  type="file"
-                  accept=".html,.htm,text/html"
-                  ref={fileInputRef}
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                />
-                {file && (
-                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-green-700 font-medium">
-                      {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+              {/* Conversion Tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="code" className="flex items-center gap-2">
+                    <Code className="w-4 h-4" />
+                    HTML Code
+                  </TabsTrigger>
+                  <TabsTrigger value="url" className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Web URL
+                  </TabsTrigger>
+                  <TabsTrigger value="file" className="flex items-center gap-2">
+                    <FileUp className="w-4 h-4" />
+                    HTML File
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* HTML Code Tab */}
+                <TabsContent value="code" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="html-code">HTML Code</Label>
+                    <Textarea
+                      id="html-code"
+                      placeholder="Paste your HTML code here..."
+                      value={htmlCode}
+                      onChange={(e) => setHtmlCode(e.target.value)}
+                      rows={10}
+                      className="font-mono"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Enter your HTML code including CSS styles for best results
                     </p>
                   </div>
-                )}
-              </div>
+                </TabsContent>
+
+                {/* URL Tab */}
+                <TabsContent value="url" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="url">Website URL</Label>
+                    <Input
+                      id="url"
+                      type="url"
+                      placeholder="https://example.com"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Enter the URL of the webpage you want to convert to PDF
+                    </p>
+                  </div>
+                </TabsContent>
+
+                {/* File Upload Tab */}
+                <TabsContent value="file" className="space-y-4">
+                  <div
+                    className="border-2 border-dashed border-primary/20 rounded-xl p-12 text-center hover:border-primary/40 transition-colors cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                  >
+                    <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">{file ? file.name : 'Drop your HTML file here'}</h3>
+                    <p className="text-muted-foreground mb-4">Support for .html and .htm formats up to 50MB</p>
+                    <input
+                      type="file"
+                      accept=".html,.htm,text/html"
+                      ref={fileInputRef}
+                      onChange={handleFileInputChange}
+                      className="hidden"
+                    />
+                    {file && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-green-700 font-medium">
+                          {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
 
               {/* Progress Bar */}
               {isConverting && (
@@ -293,7 +467,7 @@ export default function HTMLToPDFPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={handleConvert}
-                  disabled={!file || isConverting}
+                  disabled={!canConvert()}
                   className="flex-1 bg-primary hover:bg-primary/90"
                   size="lg"
                 >
@@ -322,7 +496,7 @@ export default function HTMLToPDFPage() {
                   </Button>
                 )}
 
-                {(file || conversionResult !== null) && (
+                {(file || htmlCode || url || conversionResult !== null) && (
                   <Button variant="outline" onClick={resetForm} className="w-full sm:w-auto">
                     Reset
                   </Button>
@@ -368,10 +542,16 @@ export default function HTMLToPDFPage() {
                           <p className="text-green-800 font-medium">{conversionResult.metadata.title}</p>
                         </div>
                       )}
-                      {conversionResult.metadata?.tables !== undefined && conversionResult.metadata.tables > 0 && (
+                      {conversionResult.metadata?.source_url && (
+                        <div className="mt-2">
+                          <p className="text-sm text-green-600">Source URL:</p>
+                          <p className="text-green-800 font-medium break-all">{conversionResult.metadata.source_url}</p>
+                        </div>
+                      )}
+                      {conversionResult.metadata?.method && (
                         <div className="mt-2">
                           <p className="text-sm text-green-600">
-                            Tables: {conversionResult.metadata.tables}, Links: {conversionResult.metadata.links || 0}
+                            Conversion Method: {conversionResult.metadata.method.replace('_', ' ')}
                           </p>
                         </div>
                       )}
@@ -399,44 +579,44 @@ export default function HTMLToPDFPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold">
-              Professional HTML to PDF Conversion
+              Complete HTML to PDF Solution
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Convert HTML files with complete accuracy, preserving all formatting, styling, images, and layout
+              Convert HTML content from any source with perfect formatting, styling, and layout preservation
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto">
-                <Lock className="w-8 h-8 text-primary" />
+                <Code className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-display font-semibold">Perfect Formatting</h3>
-              <p className="text-muted-foreground">Maintains all CSS styling, fonts, colors, and layout perfectly</p>
+              <h3 className="text-xl font-display font-semibold">HTML Code Input</h3>
+              <p className="text-muted-foreground">Paste your HTML code directly and convert it to PDF instantly</p>
             </div>
 
             <div className="text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto">
-                <ImageIcon className="w-8 h-8 text-primary" />
+                <Globe className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-display font-semibold">Image Support</h3>
-              <p className="text-muted-foreground">Preserves all images, graphics, and visual elements</p>
+              <h3 className="text-xl font-display font-semibold">URL Conversion</h3>
+              <p className="text-muted-foreground">Convert any webpage to PDF by simply entering its URL</p>
             </div>
 
             <div className="text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto">
-                <Zap className="w-8 h-8 text-primary" />
+                <FileUp className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-display font-semibold">Lightning Fast</h3>
-              <p className="text-muted-foreground">Quick conversion process that handles complex HTML efficiently</p>
+              <h3 className="text-xl font-display font-semibold">File Upload</h3>
+              <p className="text-muted-foreground">Upload HTML files with all linked resources preserved</p>
             </div>
 
             <div className="text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto">
                 <Shield className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-display font-semibold">Secure Processing</h3>
-              <p className="text-muted-foreground">Your files are processed securely and deleted after conversion</p>
+              <h3 className="text-xl font-display font-semibold">Perfect Formatting</h3>
+              <p className="text-muted-foreground">Maintains CSS styles, fonts, images, and layout accurately</p>
             </div>
           </div>
         </div>

@@ -22,6 +22,8 @@ from pdf_to_jpg_converter import PDFToJPGConverter
 from word_to_pdf_converter import WordToPDFConverter # Import the new converter
 from powerpoint_to_pdf_converter import PowerPointToPDFConverter # Import PowerPoint to PDF converter
 from excel_to_pdf_converter import ExcelToPDFConverter # Import Excel to PDF converter
+from html_to_pdf_converter import HTMLToPDFConverter # Import HTML to PDF converter
+
 # Global storage for conversion results
 conversion_storage = {}
 temp_dir = tempfile.mkdtemp()
@@ -33,6 +35,7 @@ jpg_converter = PDFToJPGConverter(temp_dir)
 word_to_pdf_converter = WordToPDFConverter(temp_dir) # Initialize the new converter
 powerpoint_to_pdf_converter = PowerPointToPDFConverter(temp_dir) # Initialize PowerPoint to PDF converter
 excel_to_pdf_converter = ExcelToPDFConverter(temp_dir) # Initialize Excel to PDF converter
+html_to_pdf_converter = HTMLToPDFConverter(temp_dir) # Initialize HTML to PDF converter
 
 class APIHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -49,7 +52,7 @@ class APIHandler(BaseHTTPRequestHandler):
                 'service': 'python-backend',
                 'timestamp': datetime.now().isoformat(),
                 'version': '2.0.0',
-                'features': ['pdf-to-word-conversion', 'pdf-to-powerpoint-conversion', 'pdf-to-excel-conversion', 'pdf-to-jpg-conversion', 'word-to-pdf-conversion', 'powerpoint-to-pdf-conversion', 'excel-to-pdf-conversion', 'advanced-formatting', 'image-preservation']
+                'features': ['pdf-to-word-conversion', 'pdf-to-powerpoint-conversion', 'pdf-to-excel-conversion', 'pdf-to-jpg-conversion', 'word-to-pdf-conversion', 'powerpoint-to-pdf-conversion', 'excel-to-pdf-conversion', 'html-to-pdf-conversion', 'advanced-formatting', 'image-preservation']
             }
             self.wfile.write(json.dumps(response).encode())
 
@@ -219,6 +222,8 @@ class APIHandler(BaseHTTPRequestHandler):
                 self.handle_powerpoint_to_pdf_conversion()
             elif self.path == '/api/convert/excel-to-pdf': # Added handler for Excel to PDF
                 self.handle_excel_to_pdf_conversion()
+            elif self.path == '/api/convert/html-to-pdf': # Added handler for HTML to PDF
+                self.handle_html_to_pdf_conversion()
             else:
                 # Handle other POST requests
                 self.send_response(404)
@@ -1016,6 +1021,136 @@ class APIHandler(BaseHTTPRequestHandler):
             self.log_message(f"Error in Excel to PDF conversion: {e}")
             self._send_error_response(500, f'Conversion failed: {str(e)}')
 
+    def handle_html_to_pdf_conversion(self):
+        """Handle HTML to PDF conversion requests"""
+        try:
+            content_type = self.headers.get('Content-Type', '')
+            content_length = int(self.headers.get('Content-Length', 0))
+
+            if content_length == 0:
+                self._send_error_response(400, 'No data provided')
+                return
+
+            body = self.rfile.read(content_length)
+            conversion_id = str(uuid.uuid4())
+
+            # Initialize storage
+            conversion_storage[conversion_id] = {
+                'conversion_id': conversion_id, 'success': False, 'status': 'processing',
+                'filename': None, 'download_url': None, 'error': None, 'metadata': {},
+                'method': 'html-to-pdf'
+            }
+
+            def convert_async():
+                try:
+                    result = None
+
+                    if content_type.startswith('multipart/form-data'):
+                        # Handle file upload
+                        boundary = content_type.split('boundary=')[1].encode()
+                        parts = body.split(b'--' + boundary)
+
+                        html_file_content = None
+                        html_filename = None
+
+                        for part in parts:
+                            if b'Content-Disposition' in part and b'filename=' in part:
+                                lines = part.split(b'\r\n')
+                                for line in lines:
+                                    if b'Content-Disposition' in line:
+                                        if b'filename=' in line:
+                                            filename_part = line.split(b'filename=')[1]
+                                            html_filename = filename_part.strip(b'"').decode('utf-8')
+                                            break
+                                if b'\r\n\r\n' in part:
+                                    html_file_content = part.split(b'\r\n\r\n', 1)[1]
+                                    if html_file_content.endswith(b'\r\n'):
+                                        html_file_content = html_file_content[:-2]
+                                    break
+
+                        if html_file_content and html_filename:
+                            # Save temp file and convert
+                            html_temp_path = os.path.join(temp_dir, f"{conversion_id}_{html_filename}")
+                            with open(html_temp_path, 'wb') as f:
+                                f.write(html_file_content)
+
+                            result = html_to_pdf_converter.convert_html_file_to_pdf(html_temp_path)
+
+                            # Cleanup
+                            try: os.remove(html_temp_path)
+                            except: pass
+
+                    elif content_type.startswith('application/json'):
+                        # Handle JSON data (HTML code or URL)
+                        import json
+                        try:
+                            data = json.loads(body.decode('utf-8'))
+
+                            if 'html_code' in data:
+                                # Convert HTML code
+                                result = html_to_pdf_converter.convert_html_code_to_pdf(data['html_code'])
+                            elif 'url' in data:
+                                # Convert URL
+                                result = html_to_pdf_converter.convert_url_to_pdf(data['url'])
+                            else:
+                                result = {"success": False, "error": "Neither html_code nor url provided"}
+
+                        except json.JSONDecodeError:
+                            result = {"success": False, "error": "Invalid JSON data"}
+
+                    else:
+                        # Try to parse as HTML code directly
+                        try:
+                            html_code = body.decode('utf-8')
+                            result = html_to_pdf_converter.convert_html_code_to_pdf(html_code)
+                        except:
+                            result = {"success": False, "error": "Unable to parse request data"}
+
+                    if not result:
+                        result = {"success": False, "error": "No valid conversion method found"}
+
+                    # Process result
+                    if result.get('success'):
+                        base_name = f"html_converted_{conversion_id}"
+                        output_filename = f"{base_name}.pdf"
+                        final_output_path = os.path.join(temp_dir, output_filename)
+
+                        if os.path.exists(result['output_path']):
+                            shutil.move(result['output_path'], final_output_path)
+                            result['output_path'] = final_output_path
+                            result['filename'] = output_filename
+
+                    result['conversion_id'] = conversion_id
+                    conversion_storage[conversion_id].update({
+                        'success': result.get('success', False), 'status': 'completed', 'filename': result.get('filename'),
+                        'output_path': result.get('output_path'),
+                        'download_url': f'/api/download/{conversion_id}/{result.get("filename", "")}' if result.get('success') and result.get('filename') else None,
+                        'error': result.get('error'), 'metadata': result.get('metadata', {}), 'method': result.get('method', 'html-to-pdf')
+                    })
+
+                except Exception as e:
+                    print(f"Exception in HTML to PDF convert_async for {conversion_id}: {str(e)}")
+                    conversion_storage[conversion_id].update({
+                        'success': False, 'status': 'failed', 'filename': None,
+                        'download_url': None, 'error': f'HTML to PDF conversion failed: {str(e)}',
+                        'metadata': {}, 'method': 'html-to-pdf'
+                    })
+
+            thread = threading.Thread(target=convert_async)
+            thread.daemon = True
+            thread.start()
+
+            self._send_json_response({
+                'success': True, 'conversion_id': conversion_id,
+                'message': 'HTML to PDF conversion started',
+                'status_url': f'/api/status/{conversion_id}'
+            }, 202)
+
+        except Exception as e:
+            self.log_message(f"Error in HTML to PDF conversion: {e}")
+            self._send_error_response(500, f'Conversion failed: {str(e)}')
+
+
     def log_message(self, format, *args):
         # Custom logging format
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {format % args}")
@@ -1034,7 +1169,8 @@ def run_server(port=8000):
     print("  POST /api/convert/word-to-pdf - Word to PDF conversion")
     print("  POST /api/convert/powerpoint-to-pdf - PowerPoint to PDF conversion")
     print("  POST /api/convert/excel-to-pdf - Excel to PDF conversion")
-    
+    print("  POST /api/convert/html-to-pdf - HTML to PDF conversion (code, URL, or file upload)")
+
     print("  GET /api/status/{id} - Check conversion status")
     print("  GET /api/download/{id}/{filename} - Download converted files")
 
