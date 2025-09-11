@@ -34,8 +34,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY requirements.txt ./
 
-# Install Node.js dependencies
-RUN npm ci
+# Install Node.js dependencies (with legacy peer deps to resolve React version conflicts)
+RUN npm ci --legacy-peer-deps
 
 # Install Python dependencies
 RUN pip3 install -r requirements.txt
