@@ -13,9 +13,12 @@ import traceback
 import requests
 import uuid
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from urllib.parse import urlparse, urljoin
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from weasyprint import HTML
 
 try:
     import weasyprint
@@ -24,6 +27,7 @@ try:
 except ImportError as e:
     print(f"Warning: WeasyPrint not available - {e}")
     weasyprint = None
+    HTML = None  # type: ignore
 
 try:
     from bs4 import BeautifulSoup
@@ -42,11 +46,11 @@ except ImportError as e:
 class HTMLToPDFConverter:
     """Advanced HTML to PDF converter supporting multiple input methods"""
     
-    def __init__(self, output_dir: str = None):
+    def __init__(self, output_dir: Optional[str] = None):
         self.output_dir = output_dir or tempfile.mkdtemp()
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
     
-    def _sanitize_filename(self, filename: str) -> str:
+    def _sanitize_filename(self, filename: Optional[str]) -> str:
         """Sanitize filename to prevent path traversal and argument injection attacks"""
         if not filename:
             return f"html_code_converted_{uuid.uuid4().hex[:8]}.pdf"
@@ -75,7 +79,7 @@ class HTMLToPDFConverter:
         
         return filename
         
-    def convert_html_code_to_pdf(self, html_code: str, output_filename: str = None) -> Dict[str, Any]:
+    def convert_html_code_to_pdf(self, html_code: str, output_filename: Optional[str] = None) -> Dict[str, Any]:
         """Convert HTML code string directly to PDF"""
         try:
             print("Starting HTML code to PDF conversion")
@@ -123,7 +127,7 @@ class HTMLToPDFConverter:
             print(error_msg)
             return {"success": False, "error": error_msg}
     
-    def convert_url_to_pdf(self, url: str, output_filename: str = None) -> Dict[str, Any]:
+    def convert_url_to_pdf(self, url: str, output_filename: Optional[str] = None) -> Dict[str, Any]:
         """Convert HTML from URL to PDF"""
         try:
             print(f"Starting URL to PDF conversion: {url}")
@@ -196,7 +200,7 @@ class HTMLToPDFConverter:
             print(error_msg)
             return {"success": False, "error": error_msg}
     
-    def convert_html_file_to_pdf(self, html_file_path: str, output_filename: str = None) -> Dict[str, Any]:
+    def convert_html_file_to_pdf(self, html_file_path: str, output_filename: Optional[str] = None) -> Dict[str, Any]:
         """Convert HTML file to PDF"""
         try:
             print(f"Starting HTML file to PDF conversion: {html_file_path}")
@@ -267,7 +271,7 @@ class HTMLToPDFConverter:
     def _convert_code_with_weasyprint(self, html_code: str, output_path: str) -> bool:
         """Convert HTML code using WeasyPrint"""
         try:
-            if not weasyprint:
+            if not weasyprint or HTML is None:
                 return False
             
             # Create HTML document
@@ -319,7 +323,7 @@ class HTMLToPDFConverter:
     def _convert_url_with_weasyprint(self, url: str, html_content: str, base_url: str, output_path: str) -> bool:
         """Convert URL using WeasyPrint"""
         try:
-            if not weasyprint:
+            if not weasyprint or HTML is None:
                 return False
             
             # Create HTML document with base URL
@@ -365,7 +369,7 @@ class HTMLToPDFConverter:
     def _convert_file_with_weasyprint(self, html_file_path: str, html_content: str, base_path: str, output_path: str) -> bool:
         """Convert HTML file using WeasyPrint"""
         try:
-            if not weasyprint:
+            if not weasyprint or HTML is None:
                 return False
             
             # Create HTML document with base URL for relative paths
@@ -422,8 +426,10 @@ class HTMLToPDFConverter:
                 
                 # Get title
                 title_tag = soup.find('title')
-                if title_tag and title_tag.string:
-                    metadata['title'] = title_tag.string.strip()
+                if title_tag and hasattr(title_tag, 'string'):
+                    title_text = getattr(title_tag, 'string', None)
+                    if title_text:
+                        metadata['title'] = str(title_text).strip()
                 
                 # Count elements
                 metadata['total_elements'] = len(soup.find_all())
@@ -437,17 +443,17 @@ class HTMLToPDFConverter:
         return metadata
 
 # Convenience functions for backward compatibility
-def convert_html_code(html_code: str, output_dir: str = None) -> Dict[str, Any]:
+def convert_html_code(html_code: str, output_dir: Optional[str] = None) -> Dict[str, Any]:
     """Convert HTML code to PDF"""
     converter = HTMLToPDFConverter(output_dir)
     return converter.convert_html_code_to_pdf(html_code)
 
-def convert_html_url(url: str, output_dir: str = None) -> Dict[str, Any]:
+def convert_html_url(url: str, output_dir: Optional[str] = None) -> Dict[str, Any]:
     """Convert HTML from URL to PDF"""
     converter = HTMLToPDFConverter(output_dir)
     return converter.convert_url_to_pdf(url)
 
-def convert_html_file(html_file_path: str, output_dir: str = None) -> Dict[str, Any]:
+def convert_html_file(html_file_path: str, output_dir: Optional[str] = None) -> Dict[str, Any]:
     """Convert HTML file to PDF"""
     converter = HTMLToPDFConverter(output_dir)
     return converter.convert_html_file_to_pdf(html_file_path)
