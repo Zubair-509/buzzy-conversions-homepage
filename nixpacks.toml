@@ -1,21 +1,22 @@
 providers = ["node", "python"]
 
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.11"
+
 [phases.setup]
 nixPkgs = [
     "poppler_utils",
     "ghostscript", 
     "cairo",
     "pango",
-    "gdk-pixbuf",
-    "libffi",
-    "mesa",
     "fontconfig",
     "freetype",
-    "libjpeg",
-    "libpng",
+    "libjpeg-turbo",
+    "libpng-apng",
     "zlib",
     "libxml2",
-    "libxslt"
+    "libxslt",
+    "pkg-config"
 ]
 
 [phases.install]
