@@ -87,7 +87,7 @@ class APIHandler(BaseHTTPRequestHandler):
                     return
 
             # Conversion not found (set default value if not in path)
-            conversion_id = conversion_id if 'conversion_id' in locals() else 'unknown'
+            conversion_id = path_parts[3] if len(path_parts) >= 4 else 'unknown'
             print(f"Conversion {conversion_id} not found in storage")
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
@@ -1155,7 +1155,10 @@ class APIHandler(BaseHTTPRequestHandler):
         # Custom logging format
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {format % args}")
 
-def run_server(port=8000):
+def run_server(port=None):
+    # Use environment variable for port, default to 8000
+    if port is None:
+        port = int(os.environ.get('BACKEND_PORT', 8000))
     server_address = ('0.0.0.0', port)
     httpd = HTTPServer(server_address, APIHandler)
     print(f"Starting Python backend server on http://0.0.0.0:{port}")

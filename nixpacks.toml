@@ -1,5 +1,23 @@
 providers = ["node", "python"]
 
+[phases.setup]
+nixPkgs = [
+    "poppler_utils",
+    "ghostscript", 
+    "cairo",
+    "pango",
+    "gdk-pixbuf",
+    "libffi",
+    "mesa",
+    "fontconfig",
+    "freetype",
+    "libjpeg",
+    "libpng",
+    "zlib",
+    "libxml2",
+    "libxslt"
+]
+
 [phases.install]
 dependsOn = ["setup"]
 cmds = [
