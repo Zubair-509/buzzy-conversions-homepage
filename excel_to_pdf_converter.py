@@ -12,58 +12,81 @@ import traceback
 import shutil
 import shlex
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING, Union
 import uuid
 import subprocess
 
-try:
+if TYPE_CHECKING:
     import openpyxl
     from openpyxl import load_workbook
-    print("openpyxl successfully imported")
-except ImportError as e:
-    print(f"Warning: openpyxl not available - {e}")
-    openpyxl = None
-
-try:
-    import xlrd
-    print("xlrd successfully imported")
-except ImportError as e:
-    print(f"Warning: xlrd not available - {e}")
-    xlrd = None
-
-try:
     from reportlab.lib.pagesizes import letter, A4
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib import colors
     from reportlab.lib.units import inch
-    print("ReportLab successfully imported")
-except ImportError as e:
-    print(f"Warning: ReportLab not available - {e}")
-    SimpleDocTemplate = None
-
-try:
+    import xlrd  # type: ignore
     import pandas as pd
-    print("pandas successfully imported")
-except ImportError as e:
-    print(f"Warning: pandas not available - {e}")
-    pd = None
-
-try:
     from PIL import Image
-    print("Pillow successfully imported")
-except ImportError as e:
-    print(f"Warning: Pillow not available - {e}")
-    Image = None
+else:
+    # Runtime imports with fallbacks
+    try:
+        import openpyxl
+        from openpyxl import load_workbook
+        print("openpyxl successfully imported")
+    except ImportError as e:
+        print(f"Warning: openpyxl not available - {e}")
+        openpyxl = None
+        load_workbook = None
+
+    try:
+        import xlrd  # type: ignore
+        print("xlrd successfully imported")
+    except ImportError as e:
+        print(f"Warning: xlrd not available - {e}")
+        xlrd = None
+
+    try:
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        print("ReportLab successfully imported")
+    except ImportError as e:
+        print(f"Warning: ReportLab not available - {e}")
+        SimpleDocTemplate = None
+        Table = None
+        TableStyle = None
+        Paragraph = None
+        Spacer = None
+        getSampleStyleSheet = None
+        colors = None
+        letter = None
+        A4 = None
+
+    try:
+        import pandas as pd
+        print("pandas successfully imported")
+    except ImportError as e:
+        print(f"Warning: pandas not available - {e}")
+        pd = None
+
+    try:
+        from PIL import Image
+        print("Pillow successfully imported")
+    except ImportError as e:
+        print(f"Warning: Pillow not available - {e}")
+        Image = None
+
 
 class ExcelToPDFConverter:
     """Advanced Excel to PDF converter with comprehensive formatting preservation"""
     
-    def __init__(self, output_dir: str = None):
+    def __init__(self, output_dir: Optional[str] = None):
         self.output_dir = output_dir or tempfile.mkdtemp()
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
         
-    def convert_excel_to_pdf(self, excel_path: str, output_filename: str = None) -> Dict[str, Any]:
+    def convert_excel_to_pdf(self, excel_path: str, output_filename: Optional[str] = None) -> Dict[str, Any]:
         """
         Convert Excel to PDF with enhanced formatting preservation and multiple fallback methods
         """
@@ -172,7 +195,9 @@ class ExcelToPDFConverter:
     def _convert_with_reportlab(self, excel_path: str, output_path: str) -> bool:
         """Convert Excel to PDF using ReportLab with advanced formatting"""
         try:
-            if not openpyxl or not SimpleDocTemplate:
+            if not openpyxl or not SimpleDocTemplate or not load_workbook:
+                return False
+            if not all([Table, TableStyle, Paragraph, Spacer, getSampleStyleSheet, colors, A4]):
                 return False
                 
             print("Attempting ReportLab conversion...")
@@ -310,7 +335,9 @@ class ExcelToPDFConverter:
     def _convert_with_basic_extraction(self, excel_path: str, output_path: str) -> bool:
         """Basic fallback conversion using simple text extraction"""
         try:
-            if not SimpleDocTemplate or not openpyxl:
+            if not SimpleDocTemplate or not openpyxl or not load_workbook:
+                return False
+            if not all([Paragraph, Spacer, getSampleStyleSheet, letter]):
                 return False
                 
             print("Attempting basic text extraction...")
@@ -364,7 +391,7 @@ class ExcelToPDFConverter:
                 metadata['file_size'] = os.path.getsize(output_path)
             
             # Try to get Excel metadata
-            if openpyxl and input_path.lower().endswith('.xlsx'):
+            if openpyxl and load_workbook and input_path.lower().endswith('.xlsx'):
                 wb = load_workbook(input_path, data_only=True)
                 metadata['sheets'] = len(wb.sheetnames)
                 metadata['sheet_names'] = wb.sheetnames
@@ -383,7 +410,7 @@ class ExcelToPDFConverter:
             
         return metadata
 
-def convert_excel_file(excel_path: str, output_dir: str = None) -> Dict[str, Any]:
+def convert_excel_file(excel_path: str, output_dir: Optional[str] = None) -> Dict[str, Any]:
     """
     Main function to convert Excel to PDF with enhanced capabilities
     """
