@@ -1,0 +1,15 @@
+providers = ["node", "python"]
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = [
+    "npm ci",
+    "pip install -r requirements.txt"
+]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run start:railway"
