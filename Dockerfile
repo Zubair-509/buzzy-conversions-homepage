@@ -35,14 +35,14 @@ COPY package*.json ./
 COPY requirements.txt ./
 
 # Install Node.js dependencies (with legacy peer deps to resolve React version conflicts)
-RUN npm ci --legacy-peer-deps
+RUN npm ci --legacy-peer-deps --no-audit --no-fund
 
 # Create and activate Python virtual environment
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Install Python dependencies in virtual environment
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 # Copy source code
 COPY . .
