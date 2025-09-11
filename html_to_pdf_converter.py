@@ -7,6 +7,7 @@ Supports HTML code input, URL conversion, and file upload.
 """
 
 import os
+import re
 import tempfile
 import traceback
 import requests
@@ -44,6 +45,35 @@ class HTMLToPDFConverter:
     def __init__(self, output_dir: str = None):
         self.output_dir = output_dir or tempfile.mkdtemp()
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+    
+    def _sanitize_filename(self, filename: str) -> str:
+        """Sanitize filename to prevent path traversal and argument injection attacks"""
+        if not filename:
+            return f"html_code_converted_{uuid.uuid4().hex[:8]}.pdf"
+        
+        # Remove path separators and dangerous characters
+        filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+        filename = re.sub(r'\.\.', '_', filename)  # Remove path traversal
+        filename = filename.strip()
+        
+        # Prevent filenames starting with dashes (argument injection)
+        if filename.startswith('-'):
+            filename = 'file_' + filename[1:]
+        
+        # Ensure filename is not empty after sanitization
+        if not filename or filename in ['.', '..']:
+            filename = f"html_code_converted_{uuid.uuid4().hex[:8]}.pdf"
+        
+        # Ensure .pdf extension
+        if not filename.lower().endswith('.pdf'):
+            filename += '.pdf'
+        
+        # Limit filename length
+        if len(filename) > 255:
+            name_part = filename[:250]
+            filename = name_part + '.pdf'
+        
+        return filename
         
     def convert_html_code_to_pdf(self, html_code: str, output_filename: str = None) -> Dict[str, Any]:
         """Convert HTML code string directly to PDF"""
@@ -53,12 +83,8 @@ class HTMLToPDFConverter:
             if not html_code or not html_code.strip():
                 return {"success": False, "error": "HTML code cannot be empty"}
             
-            # Generate output filename
-            if not output_filename:
-                output_filename = f"html_code_converted_{uuid.uuid4().hex[:8]}.pdf"
-            elif not output_filename.endswith('.pdf'):
-                output_filename += '.pdf'
-                
+            # Sanitize output filename for security
+            output_filename = self._sanitize_filename(output_filename)
             output_path = os.path.join(self.output_dir, output_filename)
             
             # Try conversion methods
