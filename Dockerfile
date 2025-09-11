@@ -37,8 +37,12 @@ COPY requirements.txt ./
 # Install Node.js dependencies (with legacy peer deps to resolve React version conflicts)
 RUN npm ci --legacy-peer-deps
 
-# Install Python dependencies
-RUN pip3 install -r requirements.txt
+# Create and activate Python virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies in virtual environment
+RUN pip install -r requirements.txt
 
 # Copy source code
 COPY . .
