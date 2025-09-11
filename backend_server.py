@@ -22,8 +22,6 @@ from pdf_to_jpg_converter import PDFToJPGConverter
 from word_to_pdf_converter import WordToPDFConverter # Import the new converter
 from powerpoint_to_pdf_converter import PowerPointToPDFConverter # Import PowerPoint to PDF converter
 from excel_to_pdf_converter import ExcelToPDFConverter # Import Excel to PDF converter
-from html_to_pdf_converter import convert_html_file # Import HTML to PDF converter
-
 # Global storage for conversion results
 conversion_storage = {}
 temp_dir = tempfile.mkdtemp()
@@ -51,7 +49,7 @@ class APIHandler(BaseHTTPRequestHandler):
                 'service': 'python-backend',
                 'timestamp': datetime.now().isoformat(),
                 'version': '2.0.0',
-                'features': ['pdf-to-word-conversion', 'pdf-to-powerpoint-conversion', 'pdf-to-excel-conversion', 'pdf-to-jpg-conversion', 'word-to-pdf-conversion', 'powerpoint-to-pdf-conversion', 'excel-to-pdf-conversion', 'html-to-pdf-conversion', 'advanced-formatting', 'image-preservation']
+                'features': ['pdf-to-word-conversion', 'pdf-to-powerpoint-conversion', 'pdf-to-excel-conversion', 'pdf-to-jpg-conversion', 'word-to-pdf-conversion', 'powerpoint-to-pdf-conversion', 'excel-to-pdf-conversion', 'advanced-formatting', 'image-preservation']
             }
             self.wfile.write(json.dumps(response).encode())
 
@@ -207,149 +205,7 @@ class APIHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
-            if self.path == '/api/convert/html-to-pdf':
-                print("Received HTML to PDF conversion request")
-
-                # Parse form data
-                form = cgi.FieldStorage(
-                    fp=self.rfile,
-                    headers=self.headers,
-                    environ={'REQUEST_METHOD': 'POST'}
-                )
-
-                file_item = form['file']
-                if not file_item.filename:
-                    self._send_error_response(400, "No file provided")
-                    return
-
-                # Generate unique conversion ID
-                conversion_id = str(uuid.uuid4())
-
-                # Save uploaded file
-                temp_file_path = os.path.join(temp_dir, f"{conversion_id}_{file_item.filename}")
-
-                with open(temp_file_path, 'wb') as temp_file:
-                    temp_file.write(file_item.file.read())
-
-                print(f"Saved uploaded HTML file to: {temp_file_path}")
-
-                # Start async conversion
-                def convert_async():
-                    print(f"Starting async HTML to PDF conversion for {conversion_id}")
-                    try:
-                        # Update status to processing
-                        conversion_storage[conversion_id] = {
-                            "conversion_id": conversion_id,
-                            "success": False,
-                            "status": "processing",
-                            "filename": None,
-                            "download_url": None,
-                            "error": None,
-                            "metadata": {},
-                            "method": "html-to-pdf"
-                        }
-                        
-                        print(f"Calling convert_html_file for {conversion_id}")
-                        result = convert_html_file(temp_file_path, temp_dir)
-
-                        print(f"Conversion result for {conversion_id}: {result}")
-
-                        if result.get("success", False):
-                            # Store successful result
-                            conversion_storage[conversion_id] = {
-                                "conversion_id": conversion_id,
-                                "success": True,
-                                "status": "completed",
-                                "filename": result["filename"],
-                                "download_url": f"/api/download/{conversion_id}/{result['filename']}",
-                                "error": None,
-                                "metadata": result.get("metadata", {}),
-                                "method": result.get("method", "unknown"),
-                                "output_path": result["output_path"]
-                            }
-
-                            # Move file to permanent location if needed
-                            final_path = os.path.join(temp_dir, result["filename"])
-                            if result["output_path"] != final_path:
-                                print(f"Moving file from {result['output_path']} to {final_path}")
-                                try:
-                                    shutil.move(result["output_path"], final_path)
-                                    conversion_storage[conversion_id]["output_path"] = final_path
-                                    print(f"File successfully moved to {final_path}")
-                                except Exception as move_error:
-                                    print(f"Error moving file: {move_error}")
-                                    # Keep original path if move fails
-                                    pass
-
-                            print(f"Stored successful result for {conversion_id} in conversion_storage")
-                        else:
-                            # Store error result
-                            error_msg = result.get("error", "Unknown conversion error")
-                            print(f"Conversion failed for {conversion_id}: {error_msg}")
-                            conversion_storage[conversion_id] = {
-                                "conversion_id": conversion_id,
-                                "success": False,
-                                "status": "failed",
-                                "error": error_msg,
-                                "filename": None,
-                                "download_url": None,
-                                "metadata": {},
-                                "method": "html-to-pdf"
-                            }
-
-                        # Clean up temp file
-                        try:
-                            if os.path.exists(temp_file_path):
-                                os.remove(temp_file_path)
-                                print(f"Cleaned up temp file {temp_file_path}")
-                        except Exception as e:
-                            print(f"Failed to clean up temp file: {e}")
-
-                        print(f"Async conversion completed for {conversion_id}. Available conversions: {list(conversion_storage.keys())}")
-
-                    except Exception as e:
-                        print(f"Exception in async HTML to PDF conversion for {conversion_id}: {e}")
-                        import traceback
-                        print(f"Full traceback: {traceback.format_exc()}")
-                        
-                        conversion_storage[conversion_id] = {
-                            "conversion_id": conversion_id,
-                            "success": False,
-                            "status": "failed",
-                            "error": f"Conversion failed: {str(e)}",
-                            "filename": None,
-                            "download_url": None,
-                            "metadata": {},
-                            "method": "html-to-pdf"
-                        }
-                        
-                        # Clean up temp file on error
-                        try:
-                            if os.path.exists(temp_file_path):
-                                os.remove(temp_file_path)
-                        except:
-                            pass
-
-                # Run conversion in background thread
-                conversion_thread = threading.Thread(target=convert_async)
-                conversion_thread.start()
-
-                # Send immediate response
-                response_data = {
-                    "success": True,
-                    "conversion_id": conversion_id,
-                    "status": "processing",
-                    "message": "HTML to PDF conversion started"
-                }
-
-                try:
-                    self._send_json_response(response_data, 202)
-                except (BrokenPipeError, ConnectionResetError):
-                    # Client disconnected, but continue with background conversion
-                    pass
-                return
-
-            elif self.path == '/api/convert/pdf-to-word':
+            if self.path == '/api/convert/pdf-to-word':
                 self.handle_pdf_to_word_conversion()
             elif self.path == '/api/convert/pdf-to-powerpoint':
                 self.handle_pdf_to_powerpoint_conversion()
@@ -1178,7 +1034,7 @@ def run_server(port=8000):
     print("  POST /api/convert/word-to-pdf - Word to PDF conversion")
     print("  POST /api/convert/powerpoint-to-pdf - PowerPoint to PDF conversion")
     print("  POST /api/convert/excel-to-pdf - Excel to PDF conversion")
-    print("  POST /api/convert/html-to-pdf - HTML to PDF conversion")
+    
     print("  GET /api/status/{id} - Check conversion status")
     print("  GET /api/download/{id}/{filename} - Download converted files")
 
