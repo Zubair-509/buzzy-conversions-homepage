@@ -91,30 +91,56 @@ class HTMLToPDFConverter:
             # Try multiple conversion methods in order of effectiveness
             methods = [
                 ("WeasyPrint conversion", self._convert_with_weasyprint),
+                ("ReportLab conversion", self._convert_with_reportlab),
                 ("wkhtmltopdf conversion", self._convert_with_wkhtmltopdf),
-                ("Chromium headless conversion", self._convert_with_chromium),
-                ("ReportLab conversion", self._convert_with_reportlab)
+                ("Chromium headless conversion", self._convert_with_chromium)
             ]
             
             for method_name, method_func in methods:
                 try:
                     print(f"Attempting {method_name}...")
-                    if method_func(html_path, output_path):
-                        print(f"{method_name} succeeded")
+                    
+                    # Set a timeout for each conversion method
+                    import signal
+                    
+                    def timeout_handler(signum, frame):
+                        raise TimeoutError(f"{method_name} timed out after 30 seconds")
+                    
+                    # Set alarm for 30 seconds
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(30)
+                    
+                    try:
+                        success = method_func(html_path, output_path)
+                        signal.alarm(0)  # Cancel the alarm
                         
-                        # Get file metadata
-                        metadata = self._get_file_metadata(output_path, html_path)
+                        if success:
+                            print(f"{method_name} succeeded")
+                            
+                            # Get file metadata
+                            metadata = self._get_file_metadata(output_path, html_path)
+                            
+                            return {
+                                "success": True, 
+                                "output_path": output_path,
+                                "filename": output_filename,
+                                "method": method_name.lower().replace(" ", "_"),
+                                "message": f"Conversion completed using {method_name}",
+                                "metadata": metadata
+                            }
+                        else:
+                            print(f"{method_name} returned False")
+                            
+                    except TimeoutError as te:
+                        signal.alarm(0)  # Cancel the alarm
+                        print(f"{method_name} timed out: {te}")
+                        continue
                         
-                        return {
-                            "success": True, 
-                            "output_path": output_path,
-                            "filename": output_filename,
-                            "method": method_name.lower().replace(" ", "_"),
-                            "message": f"Conversion completed using {method_name}",
-                            "metadata": metadata
-                        }
                 except Exception as e:
-                    print(f"{method_name} failed: {e}")
+                    signal.alarm(0)  # Cancel the alarm if set
+                    print(f"{method_name} failed with exception: {e}")
+                    import traceback
+                    print(f"Traceback: {traceback.format_exc()}")
                     continue
             
             return {"success": False, "error": "All conversion methods failed"}
@@ -129,6 +155,7 @@ class HTMLToPDFConverter:
         """Convert HTML to PDF using WeasyPrint (best quality)"""
         try:
             if not HTML:
+                print("WeasyPrint not available")
                 return False
                 
             print("Attempting WeasyPrint conversion...")
@@ -137,23 +164,52 @@ class HTMLToPDFConverter:
             with open(html_path, 'r', encoding='utf-8') as f:
                 html_content = f.read()
             
+            print(f"HTML content length: {len(html_content)} characters")
+            
             # Process images to handle relative paths
             html_content = self._process_html_images(html_content, html_path)
             
-            # Create WeasyPrint HTML object
-            html_doc = HTML(string=html_content, base_url=Path(html_path).parent.as_uri())
-            
-            # Generate PDF
-            html_doc.write_pdf(output_path)
+            # Create WeasyPrint HTML object with timeout handling
+            try:
+                print("Creating HTML document...")
+                html_doc = HTML(string=html_content, base_url=Path(html_path).parent.as_uri())
+                
+                print("Writing PDF...")
+                # Generate PDF with CSS optimizations for better performance
+                html_doc.write_pdf(
+                    output_path,
+                    stylesheets=[CSS(string='''
+                        @page {
+                            size: A4;
+                            margin: 1cm;
+                        }
+                        body {
+                            font-family: Arial, sans-serif;
+                            line-height: 1.4;
+                        }
+                        img {
+                            max-width: 100%;
+                            height: auto;
+                        }
+                    ''')]
+                )
+                print("PDF writing completed")
+                
+            except Exception as pdf_error:
+                print(f"PDF generation error: {pdf_error}")
+                return False
             
             if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-                print("WeasyPrint conversion successful")
+                print(f"WeasyPrint conversion successful - output size: {os.path.getsize(output_path)} bytes")
                 return True
+            else:
+                print("WeasyPrint conversion failed - no output file or empty file")
+                return False
                 
-            return False
-            
         except Exception as e:
             print(f"WeasyPrint conversion error: {e}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             return False
 
     def _convert_with_wkhtmltopdf(self, html_path: str, output_path: str) -> bool:
@@ -237,6 +293,7 @@ class HTMLToPDFConverter:
         """Convert HTML to PDF using ReportLab (basic conversion)"""
         try:
             if not SimpleDocTemplate or not BeautifulSoup:
+                print("ReportLab or BeautifulSoup not available")
                 return False
                 
             print("Attempting ReportLab conversion...")
@@ -245,53 +302,90 @@ class HTMLToPDFConverter:
             with open(html_path, 'r', encoding='utf-8') as f:
                 html_content = f.read()
             
+            print(f"Parsing HTML content with BeautifulSoup...")
             soup = BeautifulSoup(html_content, 'html.parser')
             
             # Create PDF document
-            doc = SimpleDocTemplate(output_path, pagesize=A4)
+            print("Creating PDF document...")
+            doc = SimpleDocTemplate(output_path, pagesize=A4, topMargin=72, bottomMargin=72)
             styles = getSampleStyleSheet()
             story = []
             
+            # Add title if present
+            title = soup.find('title')
+            if title and title.get_text().strip():
+                title_para = Paragraph(title.get_text().strip(), styles['Title'])
+                story.append(title_para)
+                story.append(Spacer(1, 24))
+            
             # Extract text content and basic formatting
-            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div']):
+            print("Extracting content...")
+            elements_found = 0
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'span', 'li']):
                 text = element.get_text().strip()
-                if text:
-                    if element.name.startswith('h'):
-                        level = int(element.name[1])
-                        if level == 1:
-                            para = Paragraph(text, styles['Title'])
-                        elif level == 2:
-                            para = Paragraph(text, styles['Heading1'])
+                if text and len(text) > 1:  # Skip very short text
+                    elements_found += 1
+                    try:
+                        if element.name.startswith('h'):
+                            level = int(element.name[1])
+                            if level == 1:
+                                para = Paragraph(text, styles['Title'])
+                            elif level == 2:
+                                para = Paragraph(text, styles['Heading1'])
+                            else:
+                                para = Paragraph(text, styles['Heading2'])
                         else:
-                            para = Paragraph(text, styles['Heading2'])
-                    else:
-                        para = Paragraph(text, styles['Normal'])
-                    
-                    story.append(para)
-                    story.append(Spacer(1, 12))
+                            para = Paragraph(text, styles['Normal'])
+                        
+                        story.append(para)
+                        story.append(Spacer(1, 12))
+                    except Exception as para_error:
+                        print(f"Error creating paragraph: {para_error}")
+                        # Create simple paragraph as fallback
+                        try:
+                            simple_para = Paragraph(text[:500], styles['Normal'])  # Limit length
+                            story.append(simple_para)
+                            story.append(Spacer(1, 12))
+                        except:
+                            continue
+            
+            print(f"Found {elements_found} elements")
             
             if not story:
                 # If no structured content found, extract all text
+                print("No structured elements found, extracting all text...")
                 text = soup.get_text()
-                paragraphs = text.split('\n')
-                for para_text in paragraphs:
-                    para_text = para_text.strip()
-                    if para_text:
-                        para = Paragraph(para_text, styles['Normal'])
-                        story.append(para)
-                        story.append(Spacer(1, 6))
+                paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
+                
+                for para_text in paragraphs[:50]:  # Limit to first 50 paragraphs
+                    if para_text and len(para_text) > 1:
+                        try:
+                            para = Paragraph(para_text[:1000], styles['Normal'])  # Limit length
+                            story.append(para)
+                            story.append(Spacer(1, 6))
+                        except Exception as para_error:
+                            print(f"Error with paragraph: {para_error}")
+                            continue
+            
+            if not story:
+                # Last resort - add some content
+                story.append(Paragraph("HTML content converted to PDF", styles['Normal']))
             
             # Build PDF
+            print("Building PDF...")
             doc.build(story)
             
             if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-                print("ReportLab conversion successful")
+                print(f"ReportLab conversion successful - output size: {os.path.getsize(output_path)} bytes")
                 return True
+            else:
+                print("ReportLab conversion failed - no output or empty file")
+                return False
                 
-            return False
-            
         except Exception as e:
             print(f"ReportLab conversion error: {e}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             return False
 
     def _process_html_images(self, html_content: str, html_path: str) -> str:

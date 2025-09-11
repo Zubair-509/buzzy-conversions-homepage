@@ -237,11 +237,24 @@ class APIHandler(BaseHTTPRequestHandler):
                 def convert_async():
                     print(f"Starting async HTML to PDF conversion for {conversion_id}")
                     try:
+                        # Update status to processing
+                        conversion_storage[conversion_id] = {
+                            "conversion_id": conversion_id,
+                            "success": False,
+                            "status": "processing",
+                            "filename": None,
+                            "download_url": None,
+                            "error": None,
+                            "metadata": {},
+                            "method": "html-to-pdf"
+                        }
+                        
+                        print(f"Calling convert_html_file for {conversion_id}")
                         result = convert_html_file(temp_file_path, temp_dir)
 
                         print(f"Conversion result for {conversion_id}: {result}")
 
-                        if result["success"]:
+                        if result.get("success", False):
                             # Store successful result
                             conversion_storage[conversion_id] = {
                                 "conversion_id": conversion_id,
@@ -259,41 +272,63 @@ class APIHandler(BaseHTTPRequestHandler):
                             final_path = os.path.join(temp_dir, result["filename"])
                             if result["output_path"] != final_path:
                                 print(f"Moving file from {result['output_path']} to {final_path}")
-                                shutil.move(result["output_path"], final_path)
-                                conversion_storage[conversion_id]["output_path"] = final_path
-                                print(f"File successfully moved to {final_path}")
+                                try:
+                                    shutil.move(result["output_path"], final_path)
+                                    conversion_storage[conversion_id]["output_path"] = final_path
+                                    print(f"File successfully moved to {final_path}")
+                                except Exception as move_error:
+                                    print(f"Error moving file: {move_error}")
+                                    # Keep original path if move fails
+                                    pass
 
-                            print(f"Stored result for {conversion_id} in conversion_storage")
+                            print(f"Stored successful result for {conversion_id} in conversion_storage")
                         else:
                             # Store error result
+                            error_msg = result.get("error", "Unknown conversion error")
+                            print(f"Conversion failed for {conversion_id}: {error_msg}")
                             conversion_storage[conversion_id] = {
                                 "conversion_id": conversion_id,
                                 "success": False,
                                 "status": "failed",
-                                "error": result["error"],
+                                "error": error_msg,
                                 "filename": None,
-                                "download_url": None
+                                "download_url": None,
+                                "metadata": {},
+                                "method": "html-to-pdf"
                             }
 
                         # Clean up temp file
                         try:
-                            os.remove(temp_file_path)
-                            print(f"Cleaned up temp file {temp_file_path}")
+                            if os.path.exists(temp_file_path):
+                                os.remove(temp_file_path)
+                                print(f"Cleaned up temp file {temp_file_path}")
                         except Exception as e:
                             print(f"Failed to clean up temp file: {e}")
 
                         print(f"Async conversion completed for {conversion_id}. Available conversions: {list(conversion_storage.keys())}")
 
                     except Exception as e:
-                        print(f"Error in async HTML to PDF conversion: {e}")
+                        print(f"Exception in async HTML to PDF conversion for {conversion_id}: {e}")
+                        import traceback
+                        print(f"Full traceback: {traceback.format_exc()}")
+                        
                         conversion_storage[conversion_id] = {
                             "conversion_id": conversion_id,
                             "success": False,
                             "status": "failed",
-                            "error": str(e),
+                            "error": f"Conversion failed: {str(e)}",
                             "filename": None,
-                            "download_url": None
+                            "download_url": None,
+                            "metadata": {},
+                            "method": "html-to-pdf"
                         }
+                        
+                        # Clean up temp file on error
+                        try:
+                            if os.path.exists(temp_file_path):
+                                os.remove(temp_file_path)
+                        except:
+                            pass
 
                 # Run conversion in background thread
                 conversion_thread = threading.Thread(target=convert_async)
