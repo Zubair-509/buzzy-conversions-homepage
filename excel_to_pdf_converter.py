@@ -10,6 +10,7 @@ import os
 import tempfile
 import traceback
 import shutil
+import shlex
 from pathlib import Path
 from typing import Dict, Any, Optional
 import uuid
@@ -130,13 +131,13 @@ class ExcelToPDFConverter:
             # Create temporary directory for LibreOffice
             temp_output_dir = tempfile.mkdtemp()
             
-            # LibreOffice command
+            # LibreOffice command with properly escaped path
             cmd = [
                 'libreoffice', 
                 '--headless', 
                 '--convert-to', 'pdf',
                 '--outdir', temp_output_dir,
-                excel_path
+                shlex.quote(excel_path)
             ]
             
             print(f"Running command: {' '.join(cmd)}")
@@ -284,7 +285,7 @@ class ExcelToPDFConverter:
                 cmd = ['wkhtmltopdf', '--page-size', 'A4', '--orientation', 'Portrait', 
                        '--margin-top', '0.75in', '--margin-right', '0.75in', 
                        '--margin-bottom', '0.75in', '--margin-left', '0.75in',
-                       temp_html, output_path]
+                       shlex.quote(temp_html), shlex.quote(output_path)]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
                 
